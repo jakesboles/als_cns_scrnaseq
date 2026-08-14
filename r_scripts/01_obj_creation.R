@@ -1,9 +1,12 @@
-# This script is to assemble the object from CellBender-corrected count matrices for 
+# This script is to assemble the object from CellBender-corrected count matrices for
 # all 90 samples from the multi-system ALS project.
-# The next scripts will assemble QC metrics and discard low-quality cells, 
-# but I expect the object will be so large that it will not be feasible to 
-# tinker with QC thresholds and other analysis parameters at the same time 
-# as creating the main object. 
+# The next scripts will assemble QC metrics and discard low-quality cells,
+# but I expect the object will be so large that it will not be feasible to
+# tinker with QC thresholds and other analysis parameters at the same time
+# as creating the main object.
+# With >1.3M cells prior to QC, the counts matrix is saved on-disk with BPCells
+# instead of as a single in-memory RDS, so downstream scripts can load it without
+# reading the full matrix into memory.
 
 # Load libraries
 suppressMessages({
@@ -12,6 +15,7 @@ suppressMessages({
   library(Seurat)
   library(stringr)
   library(scCustomize)
+  library(BPCells)
 })
 
 # Function to print clear log progress updates
@@ -106,22 +110,22 @@ message2("Joining layers")
 
 obj <- JoinLayers(obj)
 
-message2("Saving object as RDS")
+message2("Saving counts matrix as BPCells on-disk matrix")
+t0 <- Sys.time()
+write_matrix_dir(mat = obj[["RNA"]]$counts,
+                 dir = paste0(data_out_dir, "bpcells"))
+t1 <- Sys.time()
+t1 - t0
 
-saveRDS(obj,
-        file = paste0(data_out_dir, "obj.rds"))
+message2("Saving metadata as RDS")
+t0 <- Sys.time()
+saveRDS(obj@meta.data,
+        file = paste0(data_out_dir,
+                      "metadata.rds"))
+t1 <- Sys.time()
+t1 - t0
 
-# message2("Saving object as BPcells matrix")
-# t0 <- Sys.time()
-# write_matrix_dir(mat = obj[["RNA"]]$counts, 
-#                  dir = paste0(data_out_dir, "bpcells"))
-# t1 <- Sys.time()
-# t1 - t0
-# 
-# message2("Saving metadata as RDS")
-# t0 <- Sys.time()
-# saveRDS(obj@meta.data,
-#         file = paste0(data_out_dir,
-#                       "metadata.rds"))
-# t1 <- Sys.time()
-# t1 - t0
+# Downstream scripts should reconstruct the object from these on-disk pieces:
+#   counts <- open_matrix_dir(paste0(data_out_dir, "bpcells"))
+#   meta <- readRDS(paste0(data_out_dir, "metadata.rds"))
+#   obj <- CreateSeuratObject(counts = counts, meta.data = meta)
