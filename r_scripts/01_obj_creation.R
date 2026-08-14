@@ -120,19 +120,15 @@ message2("Joining layers")
 obj <- JoinLayers(obj)
 
 message2("Saving counts matrix as BPCells on-disk matrix")
-t0 <- Sys.time()
+
 write_matrix_dir(mat = obj[["RNA"]]$counts,
                  dir = paste0(data_out_dir, "bpcells"))
-t1 <- Sys.time()
-t1 - t0
 
 message2("Saving metadata as RDS")
-t0 <- Sys.time()
+
 saveRDS(obj@meta.data,
         file = paste0(data_out_dir,
                       "metadata.rds"))
-t1 <- Sys.time()
-t1 - t0
 
 # Downstream scripts should reconstruct the object from these on-disk pieces:
 #   counts <- open_matrix_dir(paste0(data_out_dir, "bpcells"))
