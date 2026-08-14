@@ -59,6 +59,9 @@ dir.create(bpcells_persample_dir, showWarnings = F, recursive = T)
 
 create_object <- function(file, id){
   counts <- Read_CellBender_h5_Mat(file)
+  # CellBender's corrected counts are non-integer; BPCells' compressed writer
+  # crashes on non-integer input, so round to whole counts before writing.
+  counts <- round(counts)
   bp_dir <- paste0(bpcells_persample_dir, id)
   write_matrix_dir(mat = counts, dir = bp_dir)
   mat <- open_matrix_dir(dir = bp_dir)
