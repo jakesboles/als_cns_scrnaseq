@@ -51,9 +51,18 @@ genes <- probes$probe_id %>%
 # Create Seurat objects from corrected counts -----------------------------
 message2("Creating Seurat objects")
 
+# Each sample's matrix is written to its own on-disk BPCells directory right
+# after reading, so only one sample's matrix is fully in memory at a time
+# instead of holding all 90 samples' matrices at once through the merge below.
+bpcells_persample_dir <- paste0(data_out_dir, "bpcells_persample/")
+dir.create(bpcells_persample_dir, showWarnings = F, recursive = T)
+
 create_object <- function(file, id){
   counts <- Read_CellBender_h5_Mat(file)
-  return(CreateSeuratObject(counts = counts, 
+  bp_dir <- paste0(bpcells_persample_dir, id)
+  write_matrix_dir(mat = counts, dir = bp_dir)
+  mat <- open_matrix_dir(dir = bp_dir)
+  return(CreateSeuratObject(counts = mat,
                             project = id)) # These thresholds are new as of 12/26/2024
 }
 
