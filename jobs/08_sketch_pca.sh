@@ -5,14 +5,17 @@
 #SBATCH --nodes 1
 #SBATCH --ntasks-per-node 16
 #SBATCH --mem 200G
-#SBATCH --time 4:00:00
+#SBATCH --time 6:00:00
 #SBATCH --output /projects/b1169/boles/als_cns_scrnaseq/logs/%x_%j.log
 #SBATCH --verbose
 
 # --mem/--time are a starting-point estimate, not measured -- LeverageScore
 # sketching still has to touch each tissue's full data to select
-# representative cells, so sized similarly to 06/07. Check `seff <jobid>`
-# after this runs and adjust.
+# representative cells, so sized similarly to 06/07. --time was bumped from
+# 4:00:00 to 6:00:00 for JackStraw()'s 100 permutation replicates across 100
+# dims per tissue, on top of everything already here (runs on the sketch
+# subset only, so this is a guess, not a large expense, but still extra
+# time). Check `seff <jobid>` after this runs and adjust.
 
 module load R/4.4.0
 module load hdf5/1.14.1-2-gcc-12.3.0
