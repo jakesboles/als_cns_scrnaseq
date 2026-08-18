@@ -52,11 +52,24 @@ meta <- meta %>%
         col = "orig.ident")
 
 obj@meta.data <- obj@meta.data %>%
-  rownames_to_column(var = "cell") %>% 
+  rownames_to_column(var = "cell") %>%
   left_join(meta, by = "orig.ident") %>%
-  mutate(orig.ident = str_split_i(orig.ident, "_", i = 1),
+  # `id` is a clean subject-only label (orig.ident minus the tissue suffix)
+  # used below for QC plot axis labels; orig.ident itself is kept intact
+  # (still "<id>_<tissue code>") since 03_qc2.R needs the full per-sample-
+  # per-tissue identity to compute thresholds.
+  mutate(id = str_split_i(orig.ident, "_", i = 1),
+         # factor()'s `labels` argument is applied positionally to
+         # `levels`, which defaults to sort(unique(Tissue)) if not given
+         # explicitly -- that alphabetical default ("Cervical spinal cord",
+         # "Motor cortex", "Muscle") does not match the order of `labels`
+         # below, which silently swapped the Motor cortex and Cervical
+         # spinal cord labels. Setting `levels` explicitly fixes this.
          Tissue = factor(Tissue,
-                         labels = c("Motor cortex", 
+                         levels = c("Motor cortex",
+                                   "Cervical spinal cord",
+                                   "Muscle"),
+                         labels = c("Motor cortex",
                                     "Cervical spinal cord",
                                     "Skeletal muscle"))) %>%
   column_to_rownames(var = "cell")
@@ -198,7 +211,7 @@ for (i in seq_along(list)){
   message2(paste0("QC plots and stats for ", tissues$title[i]))
   
   p <- QC_Plots_Genes(list[[i]],
-                      group.by = "orig.ident",
+                      group.by = "id",
                       plot_boxplot = T,
                       y_axis_log = T) +
     ylab("# of unique genes") +
@@ -210,7 +223,7 @@ for (i in seq_along(list)){
          height = 6, width = 12)
   
   p <- QC_Plots_UMIs(list[[i]],
-                     group.by = "orig.ident",
+                     group.by = "id",
                      plot_boxplot = T,
                      y_axis_log = T) +
     ylab("# of unique UMIs") +
@@ -223,7 +236,7 @@ for (i in seq_along(list)){
 
   p <- QC_Plots_Mito(list[[i]],
                      plot_boxplot = T,
-                     group.by = "orig.ident") +
+                     group.by = "id") +
     ylab("% mitochondrial\ngene counts") +
     ggtitle(tissues$title[i]) 
   
@@ -234,7 +247,7 @@ for (i in seq_along(list)){
 
   p <- QC_Plots_Complexity(list[[i]],
                            plot_boxplot = T,
-                           group.by = "orig.ident") +
+                           group.by = "id") +
     ggtitle(tissues$title[i])
   
   ggsave(p,
@@ -243,15 +256,15 @@ for (i in seq_along(list)){
          height = 6, width = 12)
   
   stats <- Median_Stats(list[[i]],
-                        group.by = "orig.ident")
-  
+                        group.by = "id")
+
   counts <- list[[i]]@meta.data %>%
-    group_by(orig.ident) %>%
+    group_by(id) %>%
     dplyr::summarize(Cell_count = n()) %>%
     adorn_totals(name = "Totals (All Cells)")
-  
+
   stats <- stats %>%
-    left_join(counts, by = "orig.ident")
+    left_join(counts, by = "id")
   
   write.csv(stats, 
             file = paste0(csv_dir, "median_stats_", tissues$file[i], ".csv"),
