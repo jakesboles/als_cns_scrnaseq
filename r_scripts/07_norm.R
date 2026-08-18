@@ -20,10 +20,6 @@ message2 <- function(text){
 
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
-plots_dir <- "plots/07_norm/"
-dir.create(plots_dir, showWarnings = F,
-           recursive = T)
-
 data_out_dir <- "data/07_norm/"
 dir.create(data_out_dir, showWarnings = F,
            recursive = T)
