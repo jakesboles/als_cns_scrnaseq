@@ -1,23 +1,14 @@
 # Load libraries
 suppressMessages({
-  library("plyr")
-  library("tidyverse")
-  library("Seurat")
-  library("ggthemes")
-  library("ggrepel")
-  library("grid")
-  library("DoubletFinder")
-  library("doMC")
-  library("xlsx")
-  library("RColorBrewer")
+  library(tidyverse)
+  library(Seurat)
+  library(BPCells)
   library(scCustomize)
-  library(paletteer)
   library(stringr)
-  library(scales)
   library(janitor)
-  library(scater)
   library(ggbeeswarm)
 })
+
 # Function to print clear log progress updates
 message2 <- function(text){
   v1 <- paste(rep("~", 15),
@@ -28,23 +19,56 @@ message2 <- function(text){
 # Create directories ------------------------------------------------------
 message2("Creating directories")
 
-proj_dir <- "/projects/b1169/boles/als_multitissue_scfrp/"
+setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
-data_in_dir <- paste0(proj_dir, "data/02_qc1/")
-
-plots_dir <- paste0(proj_dir, "plots/03_qc2/")
+plots_dir <- "plots/03_qc2/"
 dir.create(plots_dir, showWarnings = F,
            recursive = T)
 
-csv_dir <- paste0(proj_dir, "tab_data/03_qc2/")
+csv_dir <- "tab_data/03_qc2/"
 dir.create(csv_dir, showWarnings = F,
            recursive = T)
 
-data_out_dir <- paste0(proj_dir, "data/03_qc2/")
+data_out_dir <- "data/03_qc2/"
 dir.create(data_out_dir, showWarnings = F,
            recursive = T)
 
-obj <- readRDS(paste0(data_in_dir, "obj.rds"))
+# 02_qc1.R didn't generate a new counts matrix -- it only added QC metadata
+# (percent_mito, log10GenesPerUMI, etc.) and saved that as its own RDS, so we
+# reuse the same on-disk BPCells matrix from 01_obj_creation.R here, paired
+# with 02's updated metadata.
+message2("Reading in object")
+counts <- open_matrix_dir("data/01_obj_creation/bpcells")
+meta <- readRDS("data/02_qc1/metadata.rds")
+obj <- CreateSeuratObject(counts = counts, meta.data = meta)
+
+# Add sample/tissue identifiers --------------------------------------------
+
+message2("Deriving sample and tissue identifiers")
+
+# orig.ident is set at object creation (01_obj_creation.R) from each
+# sample's directory name as "<subject id>_<tissue code>" (e.g. "AU-066_b"),
+# with tissue code one of b/s/m for motor cortex, spinal cord, or muscle.
+# Deriving `id` and `tissue` directly from orig.ident here -- rather than
+# trusting a `Tissue` column carried over from 02_qc1.R -- avoids depending
+# on exactly how that column ends up labeled upstream.
+# NOTE: I wasn't able to inspect the live object or metadata.csv directly,
+# so please confirm orig.ident is still "<id>_<tissue code>" with exactly
+# one underscore once you have the object loaded. If 02_qc1.R's handling of
+# orig.ident/id/Tissue changes later, this section will need to change too.
+obj@meta.data <- obj@meta.data %>%
+  rownames_to_column(var = "cell") %>%
+  separate(orig.ident,
+          into = c("id", "tissue_code"),
+          sep = "_",
+          remove = FALSE) %>%
+  mutate(tissue = case_when(tissue_code == "b" ~ "Motor cortex",
+                            tissue_code == "s" ~ "Cervical spinal cord",
+                            tissue_code == "m" ~ "Skeletal muscle",
+                            .default = NA_character_) %>%
+           factor(levels = c("Motor cortex", "Cervical spinal cord",
+                             "Skeletal muscle"))) %>%
+  column_to_rownames(var = "cell")
 
 obj@meta.data <- obj@meta.data %>%
   mutate(log_nFeature = log10(nFeature_RNA),
@@ -53,38 +77,38 @@ obj@meta.data <- obj@meta.data %>%
 # Set cutoffs ---------------------------------------
 message2("Setting thresholds and drawing new plots")
 
-samples <- levels(obj$orig.ident)
+samples <- sort(unique(as.character(obj$orig.ident)))
 
 thresh_df <- data.frame(orig.ident = samples,
-                        umi_med = c(rep(NA, 90)),
-                        umi_mad = c(rep(NA, 90)),
-                        feature_med = c(rep(NA, 90)),
-                        feature_mad = c(rep(NA, 90)),
-                        mito_med = c(rep(NA, 90)),
-                        mito_mad = c(rep(NA, 90)))
+                        umi_med = rep(NA, length(samples)),
+                        umi_mad = rep(NA, length(samples)),
+                        feature_med = rep(NA, length(samples)),
+                        feature_mad = rep(NA, length(samples)),
+                        mito_med = rep(NA, length(samples)),
+                        mito_mad = rep(NA, length(samples)))
 
 meta <- obj@meta.data
 
 for (i in seq_along(samples)){
   message(paste0("Getting cutoffs for ", samples[i]))
-  
+
   df <- meta %>%
     filter(orig.ident == samples[i])
-  
+
   thresh_df$umi_med[i] <- median(df$log_nCount)
-  
+
   thresh_df$umi_mad[i] <- stats::mad(df$log_nCount)
-  
+
   thresh_df$feature_med[i] <- median(df$log_nFeature)
-  
+
   thresh_df$feature_mad[i] <- stats::mad(df$log_nFeature)
-  
+
   thresh_df$mito_med[i] <- median(df$percent_mito)
-  
+
   thresh_df$mito_mad[i] <- stats::mad(df$percent_mito)
 }
 
-# Pretty "strict" cutoffs of 2 x MAD still discards very few cells based 
+# Pretty "strict" cutoffs of 2 x MAD still discards very few cells based
 # on number of counts and unique genes
 thresh_df <- thresh_df %>%
   mutate(umi_lower = umi_med - 2*umi_mad,
@@ -96,25 +120,35 @@ thresh_df <- thresh_df %>%
 meta <- meta %>%
   rownames_to_column(var = "cell") %>%
   left_join(thresh_df,
-            by = "orig.ident") %>% 
+            by = "orig.ident") %>%
   mutate(mito_discard = if_else(percent_mito > mito_upper, T, F),
-         umi_discard = if_else(log_nCount < umi_lower | 
+         umi_discard = if_else(log_nCount < umi_lower |
                                  log_nCount > umi_upper, T, F),
          gene_discard = if_else(log_nFeature < feature_lower |
                                   log_nFeature > feature_upper, T, F))
 
 # Make some plots with cells colored by QC status -------------------------
-message2("Making QC plots") 
+message2("Making QC plots")
 
-tissues <- levels(meta$tissue)
-files <- c("brain", "sc", "muscle")
+tissues <- data.frame(
+  title = c("Motor cortex", "Cervical spinal cord", "Skeletal muscle"),
+  file = c("brain", "sc", "muscle")
+)
 
-for (i in seq_along(tissues)){
-  
-  message2(paste0("Making plots for ", tissues[i]))
-  
+# Replaces the old obj@misc$tissue_pal lookup -- @misc doesn't survive the
+# BPCells save/load strategy (only counts + metadata get saved, not the
+# whole object), so a plot-title palette is defined directly here instead.
+# Adjust these colors to whatever you'd prefer.
+tissue_pal <- c("Motor cortex" = "#1B9E77",
+               "Cervical spinal cord" = "#D95F02",
+               "Skeletal muscle" = "#7570B3")
+
+for (i in seq_along(tissues$title)){
+
+  message2(paste0("Making plots for ", tissues$title[i]))
+
   p <- meta %>%
-    filter(tissue == tissues[i]) %>%
+    filter(tissue == tissues$title[i]) %>%
     ggplot(aes(x = id,
                y = log_nCount)) +
     geom_quasirandom(size = 0.1,
@@ -127,23 +161,23 @@ for (i in seq_along(tissues)){
                  width = 0.5) +
     labs(y = "log10(# unique UMIs)",
          color = "Below threshold?") +
-    ggtitle(tissues[i]) +
-    guides(color = guide_legend(override.aes = list(size = 5))) + 
+    ggtitle(tissues$title[i]) +
+    guides(color = guide_legend(override.aes = list(size = 5))) +
     theme_bw() +
     theme(axis.text = element_text(color = "black"),
-          # legend.position = "none",
           axis.title.x = element_blank(),
           axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
           plot.title = element_text(face = "bold",
-                                    color = obj@misc$tissue_pal[i],
+                                    color = tissue_pal[tissues$title[i]],
                                     hjust = 0.5))
-  ggsave(filename = paste0(plots_dir, 
-                           "numi_", files[i], ".png"),
+  ggsave(p,
+         filename = paste0(plots_dir,
+                           "numi_", tissues$file[i], ".png"),
          units = "in", dpi = 600,
          height = 6, width = 12)
 
   p <- meta %>%
-    filter(tissue == tissues[i]) %>%
+    filter(tissue == tissues$title[i]) %>%
     ggplot(aes(x = id,
                y = percent_mito)) +
     geom_quasirandom(size = 0.1,
@@ -156,23 +190,23 @@ for (i in seq_along(tissues)){
                  width = 0.5) +
     labs(y = "% mitochondrial\ngene counts",
          color = "Above threshold?") +
-    ggtitle(tissues[i]) +
-    guides(color = guide_legend(override.aes = list(size = 5))) + 
+    ggtitle(tissues$title[i]) +
+    guides(color = guide_legend(override.aes = list(size = 5))) +
     theme_bw() +
     theme(axis.text = element_text(color = "black"),
-          # legend.position = "none",
           axis.title.x = element_blank(),
           axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
           plot.title = element_text(face = "bold",
-                                    color = obj@misc$tissue_pal[i],
+                                    color = tissue_pal[tissues$title[i]],
                                     hjust = 0.5))
-  ggsave(filename = paste0(plots_dir, 
-                           "mito_", files[i], ".png"),
+  ggsave(p,
+         filename = paste0(plots_dir,
+                           "mito_", tissues$file[i], ".png"),
          units = "in", dpi = 600,
          height = 6, width = 12)
 
   p <- meta %>%
-    filter(tissue == tissues[i]) %>%
+    filter(tissue == tissues$title[i]) %>%
     ggplot(aes(x = id,
                y = log_nFeature)) +
     geom_quasirandom(size = 0.1,
@@ -185,46 +219,38 @@ for (i in seq_along(tissues)){
                  width = 0.5) +
     labs(y = "log10(# unique genes)",
          color = "Below threshold?") +
-    ggtitle(tissues[i]) +
-    guides(color = guide_legend(override.aes = list(size = 5))) + 
+    ggtitle(tissues$title[i]) +
+    guides(color = guide_legend(override.aes = list(size = 5))) +
     theme_bw() +
     theme(axis.text = element_text(color = "black"),
-          # legend.position = "none",
           axis.title.x = element_blank(),
           axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
           plot.title = element_text(face = "bold",
-                                    color = obj@misc$tissue_pal[i],
+                                    color = tissue_pal[tissues$title[i]],
                                     hjust = 0.5))
-  ggsave(filename = paste0(plots_dir, 
-                           "nfeature_", files[i], ".png"),
+  ggsave(p,
+         filename = paste0(plots_dir,
+                           "nfeature_", tissues$file[i], ".png"),
          units = "in", dpi = 600,
          height = 6, width = 12)
 }
 
-
 # Mark cells for removal and save some stats ------------------------------
-message2("Marking cells and saving statistics")  
+message2("Marking cells and saving statistics")
 
 meta <- meta %>%
   mutate(discard = if_else(mito_discard == T |
                              umi_discard == T |
                              gene_discard == T,
                            T, F))
-  
 
 stats <- meta %>%
-  group_by(orig.ident, discard) %>% 
-  dplyr::summarize(n = n()) %>%
+  group_by(id, tissue, discard) %>%
+  dplyr::summarize(n = n(), .groups = "drop") %>%
   pivot_wider(names_from = "discard",
               values_from = "n") %>%
   mutate(`TRUE` = if_else(is.na(`TRUE`), 0, `TRUE`)) %>%
   mutate(retained_percent = (`FALSE` / (`FALSE` + `TRUE`)) * 100) %>%
-  separate(orig.ident, 
-           into = c("id", "tissue"),
-           sep = "_") %>%
-  mutate(tissue = case_when(tissue == "b" ~ "Motor cortex",
-                            tissue == "s" ~ "Cervical spinal cord",
-                            tissue == "m" ~ "Skeletal muscle")) %>%
   dplyr::rename("retained_count" = "FALSE",
                 "discarded_count" = "TRUE")
 
@@ -256,24 +282,24 @@ obj_filtered <- subset(obj, discard == F)
 
 message2("Saving new median stats table")
 
-for (i in seq_along(tissues)){
-  message(paste0("Getting stats for ", tissues[i]))
-  
-  s <- subset(obj_filtered, subset = tissue == tissues[i])
-  
+for (i in seq_along(tissues$title)){
+  message(paste0("Getting stats for ", tissues$title[i]))
+
+  s <- subset(obj_filtered, subset = tissue == tissues$title[i])
+
   med_stats <- Median_Stats(s,
-                            group_by_var = "id")
-  
-  counts <- s@meta.data %>%
+                            group.by = "id")
+
+  cell_counts <- s@meta.data %>%
     group_by(id) %>%
     dplyr::summarize(Cell_count = n()) %>%
     adorn_totals(name = "Totals (All Cells)")
-  
+
   med_stats <- med_stats %>%
-    left_join(counts, by = "id")
-  
-  write.csv(med_stats, 
-            file = paste0(csv_dir, "median_stats_", files[i], ".csv"),
+    left_join(cell_counts, by = "id")
+
+  write.csv(med_stats,
+            file = paste0(csv_dir, "median_stats_", tissues$file[i], ".csv"),
             row.names = F)
 }
 
