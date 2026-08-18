@@ -49,7 +49,10 @@ meta <- meta %>%
                             Tissue == "Cervical spinal cord" ~ "s",
                             Tissue == "Motor cortex" ~ "b")) %>%
   unite(c(ID, Tissue2), 
-        col = "orig.ident")
+        col = "orig.ident") %>% 
+  dplyr::rename("tissue" = "Tissue",
+                "batch" = "Batch",
+                "group" = "Group")
 
 obj@meta.data <- obj@meta.data %>%
   rownames_to_column(var = "cell") %>%
@@ -65,7 +68,7 @@ obj@meta.data <- obj@meta.data %>%
          # "Motor cortex", "Muscle") does not match the order of `labels`
          # below, which silently swapped the Motor cortex and Cervical
          # spinal cord labels. Setting `levels` explicitly fixes this.
-         Tissue = factor(Tissue,
+         tissue = factor(tissue,
                          levels = c("Motor cortex",
                                    "Cervical spinal cord",
                                    "Muscle"),
@@ -190,17 +193,17 @@ message2("Subsetting brain")
 list <- list()
 
 list[[1]] <- obj %>%
-  subset(subset = Tissue == "Motor cortex")
+  subset(subset = tissue == "Motor cortex")
 
 message2("Subsetting muscle")
 
 list[[3]] <- obj %>%
-  subset(subset = Tissue == "Skeletal muscle")
+  subset(subset = tissue == "Skeletal muscle")
 
 message2("Subsetting spinal cord")
 
 list[[2]] <- obj %>%
-  subset(subset = Tissue == "Cervical spinal cord")
+  subset(subset = tissue == "Cervical spinal cord")
 
 tissues <- data.frame(
   title = c("Motor cortex", "Cervical spinal cord", "Skeletal muscle"),
@@ -272,7 +275,7 @@ for (i in seq_along(list)){
     
 }
 
-message2("Saving QC'd meta data")
+message2("Saving processed meta data")
 
 saveRDS(obj@meta.data,
         file = paste0(data_out_dir,

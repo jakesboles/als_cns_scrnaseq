@@ -58,16 +58,7 @@ message2("Deriving sample and tissue identifiers")
 # orig.ident/id/Tissue changes later, this section will need to change too.
 obj@meta.data <- obj@meta.data %>%
   rownames_to_column(var = "cell") %>%
-  separate(orig.ident,
-          into = c("id", "tissue_code"),
-          sep = "_",
-          remove = FALSE) %>%
-  mutate(tissue = case_when(tissue_code == "b" ~ "Motor cortex",
-                            tissue_code == "s" ~ "Cervical spinal cord",
-                            tissue_code == "m" ~ "Skeletal muscle",
-                            .default = NA_character_) %>%
-           factor(levels = c("Motor cortex", "Cervical spinal cord",
-                             "Skeletal muscle"))) %>%
+  mutate(id = str_split_i(orig.ident, "_", i = 1)) %>%
   column_to_rownames(var = "cell")
 
 obj@meta.data <- obj@meta.data %>%
@@ -139,16 +130,13 @@ tissues <- data.frame(
 # BPCells save/load strategy (only counts + metadata get saved, not the
 # whole object), so a plot-title palette is defined directly here instead.
 # Adjust these colors to whatever you'd prefer.
-tissue_pal <- c("Motor cortex" = "#1B9E77",
-               "Cervical spinal cord" = "#D95F02",
-               "Skeletal muscle" = "#7570B3")
 
 for (i in seq_along(tissues$title)){
 
   message2(paste0("Making plots for ", tissues$title[i]))
 
   p <- meta %>%
-    filter(tissue == tissues$title[i]) %>%
+    filter(Tissue == tissues$title[i]) %>%
     ggplot(aes(x = id,
                y = log_nCount)) +
     geom_quasirandom(size = 0.1,
@@ -168,7 +156,6 @@ for (i in seq_along(tissues$title)){
           axis.title.x = element_blank(),
           axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
           plot.title = element_text(face = "bold",
-                                    color = tissue_pal[tissues$title[i]],
                                     hjust = 0.5))
   ggsave(p,
          filename = paste0(plots_dir,
@@ -177,7 +164,7 @@ for (i in seq_along(tissues$title)){
          height = 6, width = 12)
 
   p <- meta %>%
-    filter(tissue == tissues$title[i]) %>%
+    filter(Tissue == tissues$title[i]) %>%
     ggplot(aes(x = id,
                y = percent_mito)) +
     geom_quasirandom(size = 0.1,
@@ -197,7 +184,6 @@ for (i in seq_along(tissues$title)){
           axis.title.x = element_blank(),
           axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
           plot.title = element_text(face = "bold",
-                                    color = tissue_pal[tissues$title[i]],
                                     hjust = 0.5))
   ggsave(p,
          filename = paste0(plots_dir,
@@ -206,7 +192,7 @@ for (i in seq_along(tissues$title)){
          height = 6, width = 12)
 
   p <- meta %>%
-    filter(tissue == tissues$title[i]) %>%
+    filter(Tissue == tissues$title[i]) %>%
     ggplot(aes(x = id,
                y = log_nFeature)) +
     geom_quasirandom(size = 0.1,
@@ -226,7 +212,6 @@ for (i in seq_along(tissues$title)){
           axis.title.x = element_blank(),
           axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
           plot.title = element_text(face = "bold",
-                                    color = tissue_pal[tissues$title[i]],
                                     hjust = 0.5))
   ggsave(p,
          filename = paste0(plots_dir,
