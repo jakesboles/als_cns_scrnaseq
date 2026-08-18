@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --account b1042
-#SBATCH --partition genomics
+#SBATCH --account b1169
+#SBATCH --partition b1169
 #SBATCH --job-name 04_doubletfinder
 #SBATCH --array 1-90
 #SBATCH --nodes 1
