@@ -49,13 +49,12 @@ message2("Deriving sample and tissue identifiers")
 # orig.ident is set at object creation (01_obj_creation.R) from each
 # sample's directory name as "<subject id>_<tissue code>" (e.g. "AU-066_b"),
 # with tissue code one of b/s/m for motor cortex, spinal cord, or muscle.
-# Deriving `id` and `tissue` directly from orig.ident here -- rather than
-# trusting a `Tissue` column carried over from 02_qc1.R -- avoids depending
-# on exactly how that column ends up labeled upstream.
+# `id` is redundant with the `id` column 02_qc1.R already saves (recomputed
+# here the same way), kept for clarity/robustness. `tissue` is trusted as-is
+# from 02_qc1.R's metadata rather than re-derived.
 # NOTE: I wasn't able to inspect the live object or metadata.csv directly,
 # so please confirm orig.ident is still "<id>_<tissue code>" with exactly
-# one underscore once you have the object loaded. If 02_qc1.R's handling of
-# orig.ident/id/Tissue changes later, this section will need to change too.
+# one underscore once you have the object loaded.
 obj@meta.data <- obj@meta.data %>%
   rownames_to_column(var = "cell") %>%
   mutate(id = str_split_i(orig.ident, "_", i = 1)) %>%
@@ -126,17 +125,12 @@ tissues <- data.frame(
   file = c("brain", "sc", "muscle")
 )
 
-# Replaces the old obj@misc$tissue_pal lookup -- @misc doesn't survive the
-# BPCells save/load strategy (only counts + metadata get saved, not the
-# whole object), so a plot-title palette is defined directly here instead.
-# Adjust these colors to whatever you'd prefer.
-
 for (i in seq_along(tissues$title)){
 
   message2(paste0("Making plots for ", tissues$title[i]))
 
   p <- meta %>%
-    filter(Tissue == tissues$title[i]) %>%
+    filter(tissue == tissues$title[i]) %>%
     ggplot(aes(x = id,
                y = log_nCount)) +
     geom_quasirandom(size = 0.1,
@@ -164,7 +158,7 @@ for (i in seq_along(tissues$title)){
          height = 6, width = 12)
 
   p <- meta %>%
-    filter(Tissue == tissues$title[i]) %>%
+    filter(tissue == tissues$title[i]) %>%
     ggplot(aes(x = id,
                y = percent_mito)) +
     geom_quasirandom(size = 0.1,
@@ -192,7 +186,7 @@ for (i in seq_along(tissues$title)){
          height = 6, width = 12)
 
   p <- meta %>%
-    filter(Tissue == tissues$title[i]) %>%
+    filter(tissue == tissues$title[i]) %>%
     ggplot(aes(x = id,
                y = log_nFeature)) +
     geom_quasirandom(size = 0.1,
