@@ -39,6 +39,19 @@ message(paste("Matrix:", as.character(packageVersion("Matrix"))))
 message(paste("scCustomize:", as.character(packageVersion("scCustomize"))))
 flush(stdout())
 
+# Diagnostics: which R version each package was actually compiled/built
+# under. Matrix made breaking changes to the internal C layout of sparse
+# matrix objects across recent versions; if BPCells was built against a
+# different Matrix ABI than the one currently loaded, its compiled code can
+# misread matrix objects and segfault regardless of the data involved. A
+# mismatch here would confirm that, rather than anything about this script.
+message2("Package build info")
+message(paste("BPCells built under:", packageDescription("BPCells")$Built))
+message(paste("Matrix built under:", packageDescription("Matrix")$Built))
+message(paste("SeuratObject built under:", packageDescription("SeuratObject")$Built))
+message(paste(".libPaths():", paste(.libPaths(), collapse = "; ")))
+flush(stdout())
+
 # Create directories ------------------------------------------------------
 message2("Creating directories")
 
