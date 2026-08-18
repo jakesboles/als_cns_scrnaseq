@@ -28,30 +28,6 @@ message2 <- function(text){
 # Filter operator
 `%notin%` <- Negate(`%in%`)
 
-# Diagnostics: package versions relevant to the BPCells write_matrix_dir()
-# segfault we're tracking down. Printed once so it's captured in the job log.
-message2("Package versions")
-message(paste("R version:", R.version.string))
-message(paste("BPCells:", as.character(packageVersion("BPCells"))))
-message(paste("SeuratObject:", as.character(packageVersion("SeuratObject"))))
-message(paste("Seurat:", as.character(packageVersion("Seurat"))))
-message(paste("Matrix:", as.character(packageVersion("Matrix"))))
-message(paste("scCustomize:", as.character(packageVersion("scCustomize"))))
-flush(stdout())
-
-# Diagnostics: which R version each package was actually compiled/built
-# under. Matrix made breaking changes to the internal C layout of sparse
-# matrix objects across recent versions; if BPCells was built against a
-# different Matrix ABI than the one currently loaded, its compiled code can
-# misread matrix objects and segfault regardless of the data involved. A
-# mismatch here would confirm that, rather than anything about this script.
-message2("Package build info")
-message(paste("BPCells built under:", packageDescription("BPCells")$Built))
-message(paste("Matrix built under:", packageDescription("Matrix")$Built))
-message(paste("SeuratObject built under:", packageDescription("SeuratObject")$Built))
-message(paste(".libPaths():", paste(.libPaths(), collapse = "; ")))
-flush(stdout())
-
 # Create directories ------------------------------------------------------
 message2("Creating directories")
 
@@ -84,29 +60,10 @@ dir.create(bpcells_persample_dir, showWarnings = F, recursive = T)
 create_object <- function(file, id){
   counts <- Read_CellBender_h5_Mat(file)
 
-  # Diagnostics: print everything about this matrix before handing it to
-  # write_matrix_dir(), since the process segfaults inside that call with no
-  # R-level error to catch. This is printed for every sample so whichever one
-  # crashes has its properties already flushed to the log.
-  message(paste0("  [diagnostics] ", id))
-  message(paste("    dim:", paste(dim(counts), collapse = " x ")))
-  message(paste("    class:", paste(class(counts), collapse = ", ")))
-  message(paste("    typeof(x slot):", typeof(counts@x)))
-  message(paste("    length(x slot):", length(counts@x)))
-  message(paste("    any NA:", anyNA(counts@x)))
-  message(paste("    any non-finite:", any(!is.finite(counts@x))))
-  message(paste("    any negative:", any(counts@x < 0)))
-  message(paste("    all integer-valued:", all(counts@x == round(counts@x))))
-  message(paste("    range:", paste(range(counts@x), collapse = " to ")))
-  message(paste("    any duplicated rownames:", any(duplicated(rownames(counts)))))
-  message(paste("    any duplicated colnames:", any(duplicated(colnames(counts)))))
-  flush(stdout())
-
-  # The diagnostics above confirm the matrix is fully integer-valued, but its
-  # R storage type (dgCMatrix@x) is always "double" regardless of the values
-  # it holds. write_matrix_dir()'s compressed writer needs an explicitly
-  # integer-typed matrix rather than an ambiguous double-typed one; without
-  # this conversion it segfaults instead of just writing an inefficient file.
+  # dgCMatrix always stores its @x slot as R type "double" regardless of the
+  # values it holds, which leaves write_matrix_dir()'s compressed writer with
+  # an ambiguously-typed matrix. Converting to an explicit integer type first
+  # avoids that.
   counts <- convert_matrix_type(counts, type = "uint32_t")
 
   bp_dir <- paste0(bpcells_persample_dir, id)
