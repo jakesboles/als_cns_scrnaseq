@@ -9,6 +9,7 @@ suppressMessages({
   library(tidyverse)
   library(Seurat)
   library(BPCells)
+  library(Matrix)
   library(DoubletFinder)
   library(scCustomize)
   library(patchwork)
@@ -85,6 +86,19 @@ meta_sample <- meta_sample %>%
   column_to_rownames(var = "cell")
 
 mat <- mat[, rownames(meta_sample)]
+
+# DoubletFinder's synthetic-doublet generation samples cell pairs WITH
+# replacement, so the same cell barcode can legitimately be selected more
+# than once within a single column-subset call -- fine for an ordinary
+# dgCMatrix, but BPCells' `[` operator explicitly rejects duplicate
+# selections (its on-disk/lazy streaming model isn't built to replay the
+# same column twice in one pass), which is what crashed paramSweep() with
+# "real.cells1 must not have duplicated values". DoubletFinder isn't
+# written with a lazy on-disk matrix in mind, so this materializes to a
+# normal in-memory matrix before handing it off -- fine memory-wise since
+# NormalizeData()/ScaleData()/RunPCA() below already require the data to be
+# materialized for a single sample anyway.
+mat <- as(mat, "dgCMatrix")
 
 doublet_rate <- (n_cells_preqc / 10000) * 0.08
 
