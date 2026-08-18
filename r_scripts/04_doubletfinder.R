@@ -90,6 +90,18 @@ doublet_rate <- (n_cells_preqc / 10000) * 0.08
 
 obj <- CreateSeuratObject(counts = mat, meta.data = meta_sample)
 
+# Need to remove non-probe genes again
+probes <- read.csv("tab_data/Chromium_Human_Transcriptome_Probe_Set_v1.1.0_GRCh38-2024-A.csv",
+                   skip = 5)
+genes <- probes$probe_id %>%
+  str_split_i(pattern = "[|]",
+              i = 2) %>% 
+  unique()
+
+idx <- rownames(obj) %in% genes
+# print(table(idx))
+obj <- obj[idx, ]
+
 # Define function to run DoubletFinder ---------------------------------------
 
 run_doubletfinder <- function(s, doublet_rate) {
