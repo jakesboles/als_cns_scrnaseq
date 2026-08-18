@@ -7,6 +7,7 @@ suppressMessages({
   library(paletteer)
   library(stringr)
   library(janitor)
+  library(BPCells)
 })
 
 # Function to print clear log progress updates
@@ -32,7 +33,9 @@ dir.create(data_out_dir, showWarnings = F,
            recursive = T)
 
 message2("Reading in object")
-obj <- readRDS("data/01_obj_creation/obj.rds")
+counts <- open_matrix_dir("data/01_obj_creation/bpcells")
+meta <- readRDS("data/01_obj_creation/metadata.rds")
+obj <- CreateSeuratObject(counts = counts, meta.data = meta)
 
 # Add metadata ------------------------------------------------------------
 
