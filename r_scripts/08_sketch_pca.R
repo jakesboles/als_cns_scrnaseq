@@ -1,81 +1,91 @@
-library(Seurat)
-library(scCustomize)
-library(tidyverse)
+# Sketches each tissue's data and runs PCA on the sketch, following Seurat's
+# recommended workflow for datasets this size. Splitting layers by
+# orig.ident (deferred from 07_norm.R -- see that script's comments) happens
+# here, right before SketchData(), since that's the only place it's needed.
 
-b1169 <- "/projects/b1169/boles/als_multitissue_scfrp/"
-b1042 <- "/projects/b1042/Gate_Lab/boles/als_multitissue/"
-p31535 <- "/projects/p31535/boles/als_multitissue_scfrp/"
+# Load libraries
+suppressMessages({
+  library(Seurat)
+  library(tidyverse)
+  library(BPCells)
+})
 
-plots_dir <- paste0(b1169, "plots/08_sketch_pca/")
-dir.create(plots_dir,
-           showWarnings = F, 
+message2 <- function(text){
+  v1 <- paste(rep("~", 15),
+              collapse = "")
+  message(paste0(v1, text, v1))
+}
+
+setwd("/projects/b1169/boles/als_cns_scrnaseq")
+
+data_out_dir <- "data/08_sketch_pca/"
+dir.create(data_out_dir, showWarnings = F,
            recursive = T)
 
-data_out_dir <- paste0(b1169, "data/08_sketch_pca/")
-dir.create(data_out_dir, 
-           showWarnings = F,
-           recursive = T)
+tissues <- data.frame(
+  title = c("Motor cortex", "Cervical spinal cord", "Skeletal muscle"),
+  file = c("brain", "sc", "muscle")
+)
 
-message("Reading data")
-t0 <- Sys.time()
+message2("Reading in full counts matrix")
 
-obj_files <- list.files(paste0(b1169, "data/07_norm/"),
-                        full.names = T)
+# Only opened, not read into memory -- each tissue's cells are subset from
+# this lazily below, same pattern as elsewhere in this pipeline.
+counts_all <- open_matrix_dir("data/06_obj_reassembly/bpcells")
 
-obj_list <- list()
-obj_list <- map(obj_files, readRDS)
-names(obj_list) <- c("brain", "muscle", "sc")
+for (i in seq_along(tissues$file)){
+  tissue_file <- tissues$file[i]
 
-Sys.time() - t0
+  message2(paste0("Building object for ", tissues$title[i]))
 
-for (i in seq_along(obj_list)){
-  
-  tissue <- names(obj_list)[i]
-  
-  message(paste0("Sketching data for ", tissue))
-  
-  t0 <- Sys.time()
-  
-  obj_list[[i]] <- SketchData(obj_list[[i]],
-                              ncells = 2000,
-                              method = "LeverageScore",
-                              sketched.assay = "sketch")
-  
-  print(Sys.time() - t0)
-  
-  DefaultAssay(obj_list[[i]]) <- "sketch"
-  
-  message(paste0("Finding variable features in sketched ", tissue, " dataset"))
-  
-  t0 <- Sys.time()
-  
-  obj_list[[i]] <- FindVariableFeatures(obj_list[[i]])
-  
-  print(Sys.time() - t0)
-  
-  message(paste0("Scaling sketched expression data for ", tissue))
-  
-  t0 <- Sys.time()
-  
-  obj_list[[i]] <- ScaleData(obj_list[[i]])
-  
-  print(Sys.time() - t0)
-  
-  message(paste0("Running PCA on sketched data for ", tissue))
-  
-  t0 <- Sys.time()
-  
-  obj_list[[i]] <- RunPCA(obj_list[[i]],
-                          npcs = 100)
-  
-  print(Sys.time() - t0)
-  
-  message(paste0("Saving ", tissue, " object"))
-  
-  t0 <- Sys.time()
-  
-  saveRDS(obj_list[[i]],
-          file = paste0(data_out_dir, tissue, "_obj.rds"))
-  
-  print(Sys.time() - t0)
+  meta <- readRDS(paste0("data/07_norm/", tissue_file, "/metadata.rds"))
+  data_mat <- open_matrix_dir(paste0("data/07_norm/", tissue_file, "/bpcells_data"))
+  counts_mat <- counts_all[, rownames(meta)]
+
+  obj <- CreateSeuratObject(counts = counts_mat, meta.data = meta)
+  obj[["RNA"]]$data <- data_mat
+
+  # Deferred from 07_norm.R: splitting by sample here, right before
+  # SketchData(), which needs per-sample layers to sample representative
+  # cells across samples rather than across the tissue as a whole.
+  obj[["RNA"]] <- split(obj[["RNA"]], f = obj$orig.ident)
+
+  message2(paste0("Sketching data for ", tissues$title[i]))
+
+  obj <- SketchData(obj,
+                    ncells = 2000,
+                    method = "LeverageScore",
+                    sketched.assay = "sketch")
+
+  DefaultAssay(obj) <- "sketch"
+
+  message2(paste0("Finding variable features in sketched ", tissues$title[i], " data"))
+
+  obj <- FindVariableFeatures(obj)
+
+  message2(paste0("Scaling sketched expression data for ", tissues$title[i]))
+
+  obj <- ScaleData(obj)
+
+  message2(paste0("Running PCA on sketched data for ", tissues$title[i]))
+
+  obj <- RunPCA(obj, npcs = 100)
+
+  message2(paste0("Saving sketched data, PCA, and variable features for ",
+                  tissues$title[i]))
+
+  tissue_out_dir <- paste0(data_out_dir, tissue_file, "/")
+  dir.create(tissue_out_dir, showWarnings = F, recursive = T)
+
+  write_matrix_dir(mat = obj[["sketch"]]$data,
+                   dir = paste0(tissue_out_dir, "bpcells_data"))
+
+  saveRDS(obj@meta.data,
+          file = paste0(tissue_out_dir, "metadata.rds"))
+
+  saveRDS(obj[["pca"]],
+          file = paste0(tissue_out_dir, "pca.rds"))
+
+  saveRDS(VariableFeatures(obj),
+          file = paste0(tissue_out_dir, "variable_features.rds"))
 }
