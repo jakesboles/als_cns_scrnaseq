@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH --account b1169
-#SBATCH --partition b1169
+#SBATCH --account b1042
+#SBATCH --partition genomics
 #SBATCH --job-name 04_doubletfinder
 #SBATCH --array 1-90
 #SBATCH --nodes 1
-#SBATCH --ntasks-per-node 4
-#SBATCH --mem 32G
-#SBATCH --time 3:00:00
+#SBATCH --ntasks-per-node 16
+#SBATCH --mem 64G
+#SBATCH --time 12:00:00
 #SBATCH --output /projects/b1169/boles/als_cns_scrnaseq/logs/%x_%A_%a.log
 #SBATCH --verbose
 
