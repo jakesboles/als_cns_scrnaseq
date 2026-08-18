@@ -89,6 +89,13 @@ create_object <- function(file, id){
   message(paste("    any duplicated colnames:", any(duplicated(colnames(counts)))))
   flush(stdout())
 
+  # The diagnostics above confirm the matrix is fully integer-valued, but its
+  # R storage type (dgCMatrix@x) is always "double" regardless of the values
+  # it holds. write_matrix_dir()'s compressed writer needs an explicitly
+  # integer-typed matrix rather than an ambiguous double-typed one; without
+  # this conversion it segfaults instead of just writing an inefficient file.
+  counts <- convert_matrix_type(counts, type = "uint32_t")
+
   bp_dir <- paste0(bpcells_persample_dir, id)
   write_matrix_dir(mat = counts, dir = bp_dir)
   mat <- open_matrix_dir(dir = bp_dir)
