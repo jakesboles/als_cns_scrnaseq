@@ -56,7 +56,7 @@ for (i in seq_along(tissues$title)){
   write_matrix_dir(mat = tissue_obj[["RNA"]]$data,
                    dir = paste0(tissue_out_dir, "bpcells_data"))
 
-  message2("Saving metadata and variable features")
+  message2("Saving metadata")
 
   # Raw counts aren't re-saved per tissue -- 08 should pull this tissue's
   # cells from data/06_obj_reassembly/bpcells directly (matching this
