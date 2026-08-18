@@ -44,9 +44,6 @@ for (i in seq_along(tissues$title)){
 
   tissue_obj <- NormalizeData(tissue_obj)
 
-  message2("Finding variable features")
-
-  tissue_obj <- FindVariableFeatures(tissue_obj, verbose = T)
 
   tissue_out_dir <- paste0(data_out_dir, tissues$file[i], "/")
   dir.create(tissue_out_dir, showWarnings = F, recursive = T)
@@ -66,7 +63,4 @@ for (i in seq_along(tissues$title)){
   # metadata's rownames) rather than duplicating the counts matrix here.
   saveRDS(tissue_obj@meta.data,
           file = paste0(tissue_out_dir, "metadata.rds"))
-
-  saveRDS(VariableFeatures(tissue_obj),
-          file = paste0(tissue_out_dir, "variable_features.rds"))
 }
