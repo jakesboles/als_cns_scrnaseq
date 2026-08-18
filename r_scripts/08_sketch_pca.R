@@ -52,6 +52,14 @@ for (i in seq_along(tissues$file)){
   # cells across samples rather than across the tissue as a whole.
   obj[["RNA"]] <- split(obj[["RNA"]], f = obj$orig.ident)
 
+  # SketchData()'s LeverageScore method needs variable features already set
+  # per (per-sample) layer -- without them it falls back to using every
+  # gene, forcing a dense conversion of the full sparse matrix and blowing
+  # through LeverageScore's internal time budget ("too slow"). This is
+  # separate from the FindVariableFeatures() call below on the sketch
+  # subset, which serves a different purpose (feeding ScaleData/RunPCA).
+  obj <- FindVariableFeatures(obj)
+
   message2(paste0("Sketching data for ", tissues$title[i]))
 
   obj <- SketchData(obj,
