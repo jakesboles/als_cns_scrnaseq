@@ -243,7 +243,7 @@ for (i in seq_along(list)){
          height = 6, width = 12)
   
   stats <- Median_Stats(list[[i]],
-                        group_by = "orig.ident")
+                        group.by = "orig.ident")
   
   counts <- list[[i]]@meta.data %>%
     group_by(orig.ident) %>%
