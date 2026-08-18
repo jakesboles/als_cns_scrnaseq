@@ -1,63 +1,97 @@
-library(Seurat)
-library(scCustomize)
-library(tidyverse)
-library(patchwork)
+# Evaluates the sketch PCA from 08_sketch_pca.R -- elbow/loading/DimPlots to
+# gauge batch/site/group structure, then a quick FindNeighbors()/RunUMAP()
+# pass -- to help pick the number of PCs and judge whether integration is
+# needed before committing to those choices for the full analysis. This
+# script only reads 08's output and writes plots; it doesn't save any new
+# matrices or objects.
+
+# Load libraries
+suppressMessages({
+  library(Seurat)
+  library(scCustomize)
+  library(tidyverse)
+  library(patchwork)
+  library(BPCells)
+})
+
+message2 <- function(text){
+  v1 <- paste(rep("~", 15),
+              collapse = "")
+  message(paste0(v1, text, v1))
+}
 
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
-plots_dir <- paste0(b1169, "plots/09_sketch_pca_evaluation/")
-dir.create(plots_dir,
-           showWarnings = F, 
+plots_dir <- "plots/09_sketch_pca_evaluation/"
+dir.create(plots_dir, showWarnings = F,
            recursive = T)
 
-data_in_dir <- paste0(b1169, "data/08_sketch_pca/")
-dir.create(data_out_dir, 
-           showWarnings = F,
-           recursive = T)
+data_in_dir <- "data/08_sketch_pca/"
 
-files <- list.files(data_in_dir, 
-                    full.names = T)
-obj_list <- map(files, 
-                readRDS)
-names(obj_list) <- c("brain", "muscle", "sc")
+tissues <- data.frame(
+  title = c("Motor cortex", "Cervical spinal cord", "Skeletal muscle"),
+  file = c("brain", "sc", "muscle")
+)
 
-for (i in seq_along(obj_list)){
-  print(names(obj_list)[i])
-  print(Assays(obj_list[[i]]))
-  print(DefaultAssay(obj_list[[i]]))
-  
-  obj_list[[i]]@meta.data <- obj_list[[i]]@meta.data %>%
+# Load sketch data + PCA per tissue ------------------------------------------
+
+message2("Loading sketch objects")
+
+obj_list <- list()
+
+for (i in seq_along(tissues$file)){
+  tissue_file <- tissues$file[i]
+
+  message(paste0("Loading ", tissue_file))
+
+  data_mat <- open_matrix_dir(paste0(data_in_dir, tissue_file, "/bpcells_data"))
+  meta <- readRDS(paste0(data_in_dir, tissue_file, "/metadata.rds"))
+  pca <- readRDS(paste0(data_in_dir, tissue_file, "/pca.rds"))
+
+  # Nothing here actually needs expression values -- ElbowPlot/PC loading
+  # plots/PCA DimPlots all read straight from the attached `pca` reduction,
+  # and FindNeighbors()/RunUMAP() below run on that reduction's embeddings
+  # (via dims=), not on assay data. This is only reconstructed as a full
+  # object because CreateSeuratObject() needs some counts matrix to
+  # initialize, and it's the same sketch data 08 already wrote, so it's
+  # assigned to both "counts" and "data" in case anything later (e.g. a
+  # FeaturePlot) expects a normalized "data" layer.
+  obj <- CreateSeuratObject(counts = data_mat, meta.data = meta, assay = "sketch")
+  obj[["sketch"]]$data <- data_mat
+  obj[["pca"]] <- pca
+
+  obj@meta.data <- obj@meta.data %>%
     mutate(site = case_when(str_detect(id, "AU") ~ "WashU",
                             str_detect(id, "GWF") ~ "Barrow",
                             str_detect(id, "GBB") ~ "Georgetown"))
+
+  obj_list[[tissue_file]] <- obj
 }
 
-for (i in seq_along(obj_list)){
-  
-  obj <- obj_list[[i]]
-  
-  tissue <- names(obj_list)[i]
-  
-  message("Making elbow plot")
-  
+# PCA diagnostics -----------------------------------------------------------
+
+for (i in seq_along(tissues$file)){
+  tissue <- tissues$file[i]
+  obj <- obj_list[[tissue]]
+
+  message2(paste0("Making elbow plot for ", tissue))
+
   p <- ElbowPlot(obj,
-                 ndims = 100)
+                ndims = 100)
   ggsave(p,
          filename = paste0(plots_dir, tissue, "_elbow_plot.png"),
          units = "in", dpi = 600,
          height = 6, width = 6,
          bg = "white")
-  
-  # pick the first 30 PCs
-  
-  message("Making PC loading plots")
-  
+
+  message2(paste0("Making PC loading plots for ", tissue))
+
   Iterate_PC_Loading_Plots(obj,
                            file_path = plots_dir,
                            file_name = paste0(tissue, "_pca_loadings"))
-  
+
   pca_plot2 <- function(dims){
-    
+
     if (length(unique(Idents(obj))) == 3) {
       pal <- JCO_Four()
     } else {
@@ -70,29 +104,26 @@ for (i in seq_along(obj_list)){
                                            palette = "glasbey")
       }
     }
-    
+
     DimPlot_scCustom(obj,
                      reduction = "pca",
                      label = F,
                      dims = dims,
                      colors_use = pal) +
-      # guides(color = guide_legend(position = "inside")) +
       theme(axis.text = element_text(size = 8),
             axis.title = element_text(size = 10),
             legend.justification = "left")
   }
-  
+
   pca_grid <- function(group.by){
-    
-    # Idents(obj) <- group.by
-    
+
     design <- "
   AA######
   BBCC####
   DDEEFF##
   GGHHIIJJ
   "
-    
+
     pca_plot2(c(1,2)) +
       pca_plot2(c(1,3)) + pca_plot2(c(2,3)) +
       pca_plot2(c(1,4)) + pca_plot2(c(2,4)) + pca_plot2(c(3,4)) +
@@ -100,77 +131,57 @@ for (i in seq_along(obj_list)){
       plot_layout(design = design,
                   guides = "collect")
   }
-  
-  message("Making gridded PCA DimPlots, colored by variables of interest")
-  
+
+  message2(paste0("Making gridded PCA DimPlots for ", tissue))
+
   Idents(obj) <- "tissue"
   p <- pca_grid("tissue")
   ggsave(p,
          filename = paste0(plots_dir, tissue, "_pca_dimplot_tissue.png"),
          units = "in", dpi = 600,
          height = 10, width = 12)
-  
-  # Idents(obj) <- "orig.ident"
-  # p <- pca_grid("orig.ident")
-  # ggsave(p,
-  #        filename = paste0(plots_dir, "pca_dimplot_sample.png"),
-  #        units = "in", dpi = 600,
-  #        height = 10, width = 24)
-  
+
   Idents(obj) <- "id"
   p <- pca_grid("id")
   ggsave(p,
          filename = paste0(plots_dir, tissue, "_pca_dimplot_id.png"),
          units = "in", dpi = 600,
          height = 10, width = 15)
-  
+
   Idents(obj) <- "Batch"
   p <- pca_grid("Batch")
   ggsave(p,
          filename = paste0(plots_dir, tissue, "_pca_dimplot_batch.png"),
          units = "in", dpi = 600,
          height = 10, width = 12)
-  
+
   Idents(obj) <- "Group"
   p <- pca_grid("Group")
   ggsave(p,
          filename = paste0(plots_dir, tissue, "_pca_dimplot_group.png"),
          units = "in", dpi = 600,
          height = 10, width = 12)
-  
+
   Idents(obj) <- "site"
   p <- pca_grid("site")
-  
-ggsave(p,
-       filename = paste0(plots_dir, tissue, "_pca_dimplot_site.png"),
-       units = "in", dpi = 600,
-       height = 10, width = 12)
+  ggsave(p,
+         filename = paste0(plots_dir, tissue, "_pca_dimplot_site.png"),
+         units = "in", dpi = 600,
+         height = 10, width = 12)
 }
 
+# Cluster cells and compute UMAP ---------------------------------------------
 
-# Cluster cells and compute UMAP ------------------------------------------
+for (i in seq_along(tissues$file)){
+  tissue <- tissues$file[i]
+  obj <- obj_list[[tissue]]
 
-for (i in seq_along(obj_list)){
-  
-  obj <- obj_list[[i]]
-  
-  tissue <- names(obj_list)[i]
-  
+  message2(paste0("Running FindNeighbors/RunUMAP for ", tissue))
+
   obj <- obj %>%
     FindNeighbors(dims = 1:30) %>%
     RunUMAP(dims = 1:30)
-  
-  # obj <- obj %>%
-  #   FindClusters(resolution = 0.3,
-  #                cluster.name = "seurat_clusters")
-  
-  # DimPlot_scCustom(obj,
-  #                  reduction = "umap",
-  #                  group.by = "orig.ident")
-  # ggsave(paste0(plots_dir, "umap_dimplot_sample.png"),
-  #        units = "in", dpi = 600,
-  #        height = 5, width = 10)
-  
+
   DimPlot_scCustom(obj,
                    reduction = "umap",
                    group.by = "tissue",
@@ -178,7 +189,7 @@ for (i in seq_along(obj_list)){
   ggsave(paste0(plots_dir, tissue, "_umap_dimplot_tissue.png"),
          units = "in", dpi = 600,
          height = 5, width = 6)
-  
+
   DimPlot_scCustom(obj,
                    reduction = "umap",
                    group.by = "Batch",
@@ -187,7 +198,7 @@ for (i in seq_along(obj_list)){
   ggsave(paste0(plots_dir, tissue, "_umap_dimplot_batch.png"),
          units = "in", dpi = 600,
          height = 5, width = 6)
-  
+
   DimPlot_scCustom(obj,
                    reduction = "umap",
                    group.by = "Group",
@@ -195,14 +206,14 @@ for (i in seq_along(obj_list)){
   ggsave(paste0(plots_dir, tissue, "_umap_dimplot_group.png"),
          units = "in", dpi = 600,
          height = 5, width = 6)
-  
+
   DimPlot_scCustom(obj,
                    group.by = "id",
                    reduction = "umap")
   ggsave(paste0(plots_dir, tissue, "_umap_dimplot_id.png"),
          units = "in", dpi = 600,
          height = 5, width = 8)
-  
+
   DimPlot_scCustom(obj,
                    group.by = "site",
                    reduction = "umap",
@@ -210,36 +221,4 @@ for (i in seq_along(obj_list)){
   ggsave(paste0(plots_dir, tissue, "_umap_dimplot_site.png"),
          units = "in", dpi = 600,
          height = 5, width = 8)
-  
 }
-
-# DimPlot_scCustom(obj,
-#                  reduction = "umap",
-#                  group.by = "seurat_clusters")
-# ggsave(paste0(plots_dir, "umap_dimplot_cluster.png"),
-#        units = "in", dpi = 600,
-#        height = 5, width = 6)
-
-# FeaturePlot_scCustom(obj,
-#                      reduction = "umap",
-#                      features = c("GFAP", "ITGAM", "PLP1",
-#                                   "CD3E"))
-# ggsave(paste0(plots_dir, "featureplot_gfap_itgam_plp1_cd3e.png"),
-#        units = "in", dpi = 600,
-#        height = 6, width = 6)
-# 
-# FeaturePlot_scCustom(obj,
-#                      reduction = "umap",
-#                      features = c("MS4A1", "DCN", 
-#                                   "RBFOX3", "MYOG"))
-# ggsave(paste0(plots_dir, "featureplot_ms4a1_dcn_rbfox3_myog.png"),
-#        units = "in", dpi = 600,
-#        height = 6, width = 6)
-# 
-# data_out_dir <- paste0(b1042, "data/09_sketch_umap/")
-# dir.create(data_out_dir,
-#            showWarnings = F,
-#            recursive = T)
-# 
-# saveRDS(obj,
-#         paste0(data_out_dir, "obj.rds"))
