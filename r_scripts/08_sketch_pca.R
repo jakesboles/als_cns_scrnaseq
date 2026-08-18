@@ -2,6 +2,8 @@
 # recommended workflow for datasets this size. Splitting layers by
 # orig.ident (deferred from 07_norm.R -- see that script's comments) happens
 # here, right before SketchData(), since that's the only place it's needed.
+# JackStraw() also runs here rather than in 09 -- it needs the object's
+# scale.data to repeat PCA on permuted data, which 09 doesn't reload.
 
 # Load libraries
 suppressMessages({
@@ -71,8 +73,19 @@ for (i in seq_along(tissues$file)){
 
   obj <- RunPCA(obj, npcs = 100)
 
-  message2(paste0("Saving sketched data, PCA, and variable features for ",
-                  tissues$title[i]))
+  message2(paste0("Running JackStraw for ", tissues$title[i]))
+
+  obj <- JackStraw(obj, num.replicate = 100, dims = 100)
+  obj <- ScoreJackStraw(obj, dims = 1:100)
+
+  # Saved as a plain data.frame (PC, Score) rather than the full
+  # JackStrawData object attached to the reduction, so 09 can evaluate/plot
+  # this without needing scale.data or the full object reloaded.
+  jackstraw_scores <- JS(obj[["pca"]], slot = "overall.p.values") %>%
+    as.data.frame()
+
+  message2(paste0("Saving sketched data, PCA, variable features, and ",
+                  "JackStraw scores for ", tissues$title[i]))
 
   tissue_out_dir <- paste0(data_out_dir, tissue_file, "/")
   dir.create(tissue_out_dir, showWarnings = F, recursive = T)
@@ -88,4 +101,7 @@ for (i in seq_along(tissues$file)){
 
   saveRDS(VariableFeatures(obj),
           file = paste0(tissue_out_dir, "variable_features.rds"))
+
+  saveRDS(jackstraw_scores,
+          file = paste0(tissue_out_dir, "jackstraw_scores.rds"))
 }
