@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --account b1042
-#SBATCH --partition genomics
+#SBATCH --account b1169
+#SBATCH --partition b1169
 #SBATCH --job-name 06_obj_reassembly
 #SBATCH --nodes 1
-#SBATCH --ntasks-per-node 1
-#SBATCH --mem 200G
+#SBATCH --ntasks-per-node 16
+#SBATCH --mem 32G
 #SBATCH --time 4:00:00
 #SBATCH --output /projects/b1169/boles/als_cns_scrnaseq/logs/%x_%j.log
 #SBATCH --verbose
