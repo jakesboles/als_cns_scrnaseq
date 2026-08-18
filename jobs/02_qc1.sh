@@ -10,5 +10,6 @@
 #SBATCH --verbose
 
 module load R/4.4.0
+module load hdf5/1.14.1-2-gcc-12.3.0
 
 Rscript /projects/b1169/boles/als_cns_scrnaseq/r_scripts/02_qc1.R
