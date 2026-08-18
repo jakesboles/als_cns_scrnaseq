@@ -11,7 +11,7 @@ suppressMessages({
   library(BPCells)
   library(DoubletFinder)
   library(scCustomize)
-  library(ggpubr)
+  library(patchwork)
 })
 
 message2 <- function(text){
@@ -129,18 +129,20 @@ run_doubletfinder <- function(s, doublet_rate) {
   colnames(s@meta.data)[grep("DF.classifications*", colnames(s@meta.data))] <- "DF.adj"
 
   # Plot unadjusted vs. adjusted doublets in UMAP coordinates
-  plt <- ggarrange(
-    (DimPlot_scCustom(s, reduction = "umap", group.by = "DF.unadj",
+  p1 <- DimPlot_scCustom(s, reduction = "umap", group.by = "DF.unadj",
                       pt.size = 1, shuffle = TRUE, alpha = 0.6) +
-       ggtitle("Unadjusted")),
-    (DimPlot_scCustom(s, reduction = "umap", group.by = "DF.adj",
+       ggtitle("Unadjusted")
+  
+  p2 <- DimPlot_scCustom(s, reduction = "umap", group.by = "DF.adj",
                       pt.size = 1, shuffle = TRUE, alpha = 0.6) +
-       ggtitle("Adjusted for Homotypic Proportion")),
-    ncol = 2, nrow = 1,
-    common.legend = T, legend = "right"
-  )
+       ggtitle("Adjusted for Homotypic Proportion")
+  
+  p <- p1 + p2 + 
+    plot_layout(ncol = 2,
+                nrow = 1,
+                guides = "collect")
 
-  ggsave(plt,
+  ggsave(p,
          filename = paste0(plots_dir, unique(s$orig.ident), "_umap.png"),
          units = "in", dpi = 600,
          height = 5, width = 10)

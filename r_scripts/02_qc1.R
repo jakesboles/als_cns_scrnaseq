@@ -94,10 +94,10 @@ obj <- obj %>%
   Add_Mito_Ribo("Hs") %>% 
   Add_Cell_Complexity()
 
-message("Removing odd cell with 1 count")
-
-obj <- subset(obj,
-              subset = nCount_RNA > 1)
+# message("Removing odd cell with 1 count")
+# 
+# obj <- subset(obj,
+#               subset = nCount_RNA > 1)
 
 # For lab meeting 10/30/25 ------------------------------------------------
 

@@ -132,16 +132,17 @@ for (i in seq_along(tissues$title)){
   p <- meta %>%
     filter(tissue == tissues$title[i]) %>%
     ggplot(aes(x = id,
-               y = log_nCount)) +
+               y = nCount_RNA)) +
     geom_quasirandom(size = 0.1,
                      aes(color = umi_discard)) +
     scale_color_manual(values = c("gray60", "red")) +
+    scale_y_log10() +
     stat_summary(aes(group = id),
                  fun = median,
                  color = "black",
                  geom = "crossbar",
                  width = 0.5) +
-    labs(y = "log10(# unique UMIs)",
+    labs(y = "# unique UMIs",
          color = "Below threshold?") +
     ggtitle(tissues$title[i]) +
     guides(color = guide_legend(override.aes = list(size = 5))) +
@@ -188,16 +189,17 @@ for (i in seq_along(tissues$title)){
   p <- meta %>%
     filter(tissue == tissues$title[i]) %>%
     ggplot(aes(x = id,
-               y = log_nFeature)) +
+               y = nFeature_RNA)) +
     geom_quasirandom(size = 0.1,
                      aes(color = gene_discard)) +
     scale_color_manual(values = c("gray60", "red")) +
+    scale_y_log10() +
     stat_summary(aes(group = id),
                  fun = median,
                  color = "black",
                  geom = "crossbar",
                  width = 0.5) +
-    labs(y = "log10(# unique genes)",
+    labs(y = "# unique genes",
          color = "Below threshold?") +
     ggtitle(tissues$title[i]) +
     guides(color = guide_legend(override.aes = list(size = 5))) +
@@ -260,10 +262,8 @@ write.csv(barcodes,
 # Discard low quality cells and save object -------------------------------
 message2("Filtering object of low quality cells")
 
-obj@meta.data <- obj@meta.data %>%
-  rownames_to_column(var = "cell") %>%
-  left_join(meta) %>%
-  column_to_rownames(var = "cell")
+obj <- AddMetaData(obj,
+                   meta)
 
 obj_filtered <- subset(obj, discard == F)
 
@@ -289,8 +289,3 @@ for (i in seq_along(tissues$title)){
             file = paste0(csv_dir, "median_stats_", tissues$file[i], ".csv"),
             row.names = F)
 }
-
-message2("Saving filtered object")
-
-saveRDS(obj_filtered,
-        file = paste0(data_out_dir, "filtered_obj.rds"))
