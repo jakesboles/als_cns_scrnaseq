@@ -54,30 +54,29 @@ meta <- meta %>%
 obj@meta.data <- obj@meta.data %>%
   rownames_to_column(var = "cell") %>% 
   left_join(meta, by = "orig.ident") %>%
-  mutate(orig.ident = str_split_i(orig.ident, "_", i = 1) %>%
-           factor(orig.ident),
-         Tissue = factor(Tissue, 
-                         levels = c("b", "s", "m"),
+  mutate(orig.ident = str_split_i(orig.ident, "_", i = 1),
+         Tissue = factor(Tissue,
                          labels = c("Motor cortex", 
                                     "Cervical spinal cord",
                                     "Skeletal muscle"))) %>%
   column_to_rownames(var = "cell")
 
-sample_pal <- DiscretePalette_scCustomize(30, palette = "polychrome")
+# sample_pal <- DiscretePalette_scCustomize(30, palette = "polychrome")
 
-obj <- Store_Palette_Seurat(seurat_object = obj, 
-                            palette = sample_pal, palette_name = "sample_pal",
-                            overwrite = T)
+# obj <- Store_Palette_Seurat(seurat_object = obj, 
+#                             palette = sample_pal, palette_name = "sample_pal",
+#                             overwrite = T)
 
-tissue_pal <- JCO_Four()[1:3]
+# tissue_pal <- JCO_Four()[1:3]
 
-obj <- Store_Palette_Seurat(obj,
-                            palette = tissue_pal,
-                            palette_name = "tissue_pal",
-                            overwrite = T)
+# obj <- Store_Palette_Seurat(obj,
+#                             palette = tissue_pal,
+#                             palette_name = "tissue_pal",
+#                             overwrite = T)
 
 obj <- obj %>%
-  Add_Cell_QC_Metrics(species = "human")
+  Add_Mito_Ribo("Hs") %>% 
+  Add_Cell_Complexity()
 
 message("Removing odd cell with 1 count")
 
@@ -178,17 +177,17 @@ message2("Subsetting brain")
 list <- list()
 
 list[[1]] <- obj %>%
-  subset(subset = tissue == "Motor cortex")
+  subset(subset = Tissue == "Motor cortex")
 
 message2("Subsetting muscle")
 
 list[[3]] <- obj %>%
-  subset(subset = tissue == "Skeletal muscle")
+  subset(subset = Tissue == "Skeletal muscle")
 
 message2("Subsetting spinal cord")
 
 list[[2]] <- obj %>%
-  subset(subset = tissue == "Cervical spinal cord")
+  subset(subset = Tissue == "Cervical spinal cord")
 
 tissues <- data.frame(
   title = c("Motor cortex", "Cervical spinal cord", "Skeletal muscle"),
@@ -199,28 +198,23 @@ for (i in seq_along(list)){
   message2(paste0("QC plots and stats for ", tissues$title[i]))
   
   p <- QC_Plots_Genes(list[[i]],
-                      group.by = "id",
-                      colors_use = list[[i]]@misc$sample_pal,
+                      group.by = "orig.ident",
                       plot_boxplot = T,
                       y_axis_log = T) +
     ylab("# of unique genes") +
-    ggtitle(tissues$title[i]) +
-    theme(plot.title = element_text(color = list[[i]]@misc$tissue_pal[i],
-                                    face = "bold"))
+    ggtitle(tissues$title[i])
+  
   ggsave(p,
          filename = paste0(plots_dir, "nfeature_", tissues$file[i], ".png"),
          units = "in", dpi = 600,
          height = 6, width = 12)
   
   p <- QC_Plots_UMIs(list[[i]],
-                     group.by = "id",
-                     colors_use = list[[i]]@misc$sample_pal,
+                     group.by = "orig.ident",
                      plot_boxplot = T,
                      y_axis_log = T) +
     ylab("# of unique UMIs") +
-    ggtitle(tissues$title[i]) +
-    theme(plot.title = element_text(color = list[[i]]@misc$tissue_pal[i],
-                                    face = "bold"))
+    ggtitle(tissues$title[i])
   
   ggsave(p,
          filename = paste0(plots_dir, "numi_", tissues$file[i], ".png"),
@@ -228,13 +222,10 @@ for (i in seq_along(list)){
          height = 6, width = 12)
 
   p <- QC_Plots_Mito(list[[i]],
-                     colors_use = list[[i]]@misc$sample_pal,
                      plot_boxplot = T,
-                     group.by = "id") +
+                     group.by = "orig.ident") +
     ylab("% mitochondrial\ngene counts") +
-    ggtitle(tissues$title[i]) +
-    theme(plot.title = element_text(color = list[[i]]@misc$tissue_pal[i],
-                                    face = "bold"))
+    ggtitle(tissues$title[i]) 
   
   ggsave(p,
          filename = paste0(plots_dir, "mito_", tissues$file[i], ".png"),
@@ -242,12 +233,9 @@ for (i in seq_along(list)){
          height = 6, width = 12)
 
   p <- QC_Plots_Complexity(list[[i]],
-                           colors_use = list[[i]]@misc$sample_pal,
                            plot_boxplot = T,
-                           group.by = "id") +
-    ggtitle(tissues$title[i]) +
-    theme(plot.title = element_text(color = list[[i]]@misc$tissue_pal[i],
-                                    face = "bold"))
+                           group.by = "orig.ident") +
+    ggtitle(tissues$title[i])
   
   ggsave(p,
          filename = paste0(plots_dir, "complexity_", tissues$file[i], ".png"),
@@ -255,15 +243,15 @@ for (i in seq_along(list)){
          height = 6, width = 12)
   
   stats <- Median_Stats(list[[i]],
-                        group_by = "id")
+                        group_by = "orig.ident")
   
   counts <- list[[i]]@meta.data %>%
-    group_by(id) %>%
+    group_by(orig.ident) %>%
     dplyr::summarize(Cell_count = n()) %>%
     adorn_totals(name = "Totals (All Cells)")
   
   stats <- stats %>%
-    left_join(counts, by = "id")
+    left_join(counts, by = "orig.ident")
   
   write.csv(stats, 
             file = paste0(csv_dir, "median_stats_", tissues$file[i], ".csv"),
@@ -271,10 +259,10 @@ for (i in seq_along(list)){
     
 }
 
-message2("Saving full QC'd object")
+message2("Saving QC'd meta data")
 
-saveRDS(obj,
+saveRDS(obj@meta.data,
         file = paste0(data_out_dir,
-                      "obj.rds"))
+                      "metadata.rds"))
 
 
