@@ -223,6 +223,14 @@ meta <- meta %>%
                              gene_discard == T,
                            T, F))
 
+# Saved separately (all cells, not yet filtered) so 04_doubletfinder.R's job
+# array can load just this table plus each sample's own raw per-sample
+# BPCells matrix, without ever materializing the whole-cohort object again.
+message2("Saving full metadata with discard flags")
+
+saveRDS(meta,
+        file = paste0(data_out_dir, "metadata.rds"))
+
 stats <- meta %>%
   group_by(id, tissue, discard) %>%
   dplyr::summarize(n = n(), .groups = "drop") %>%

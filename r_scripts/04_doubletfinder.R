@@ -1,157 +1,169 @@
+# This script runs as a SLURM job array (see jobs/04_doubletfinder.sh), one
+# task per sample, instead of looping over all 90 samples in a single job.
+# Each task independently loads its own sample's raw per-sample BPCells
+# matrix from 01_obj_creation.R and the shared metadata saved by 03_qc2.R,
+# so no task ever materializes the whole-cohort object.
+
 # Load libraries
 suppressMessages({
-  library("plyr")
-  library("tidyverse")
-  library("Seurat")
-  library("ggthemes")
-  library("ggrepel")
-  library("grid")
-  library("DoubletFinder")
-  library("doMC")
-  library("xlsx")
-  library("RColorBrewer")
+  library(tidyverse)
+  library(Seurat)
+  library(BPCells)
+  library(DoubletFinder)
   library(scCustomize)
   library(ggpubr)
-  # library(BPCells)
-  library(patchwork)
 })
 
-# Script again adapted from Anne's projects
+message2 <- function(text){
+  v1 <- paste(rep("~", 15),
+              collapse = "")
+  message(paste0(v1, text, v1))
+}
 
-proj_dir <- "/projects/b1169/boles/als_multitissue_scfrp/"
+setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
-plots_dir <- paste0(proj_dir, "plots/04_doubletfinder/")
-dir.create(plots_dir,
-           showWarnings = F, recursive = T)
+plots_dir <- "plots/04_doubletfinder/"
+dir.create(plots_dir, showWarnings = F,
+           recursive = T)
 
-data_out_dir <- paste0(proj_dir, "data/04_doubletfinder/")
-dir.create(data_out_dir,
-           showWarnings = F, recursive = T)
+data_out_dir <- "data/04_doubletfinder/"
+dir.create(paste0(data_out_dir, "bpcells_persample/"), showWarnings = F,
+           recursive = T)
+dir.create(paste0(data_out_dir, "metadata_persample/"), showWarnings = F,
+           recursive = T)
 
-obj <- readRDS(paste0(proj_dir, "data/03_qc2/filtered_obj.rds"))
+# Figure out which sample this task handles ---------------------------------
 
-# Load pre-filter stats to get counts for each sample
-# Concatenate stats and order according to the way object layers will be split for DF
-# This way, each sample gets a customized doublet formation rate depending on the # of cells detected 
+task_id <- Sys.getenv("SLURM_ARRAY_TASK_ID")
+if (task_id == ""){
+  stop("SLURM_ARRAY_TASK_ID is not set -- this script is meant to run as a ",
+       "SLURM job array (see jobs/04_doubletfinder.sh), one task per sample, ",
+       "not as a standalone Rscript call.")
+}
+task_id <- as.integer(task_id)
 
-brain_counts <- read.csv("/projects/b1169/boles/als_multitissue_scfrp/tab_data/02_qc1/median_stats_brain.csv")[-31, ] %>%
-  mutate(id = paste0(id, "_b"))
+message2("Loading metadata")
+meta_all <- readRDS("data/03_qc2/metadata.rds")
 
-sc_counts <- read.csv("/projects/b1169/boles/als_multitissue_scfrp/tab_data/02_qc1/median_stats_sc.csv")[-31, ] %>%
-  mutate(id = paste0(id, "_s"))
+# Sorting guarantees the same sample <-> array index mapping every run.
+samples <- sort(unique(meta_all$orig.ident))
 
-muscle_counts <- read.csv("/projects/b1169/boles/als_multitissue_scfrp/tab_data/02_qc1/median_stats_muscle.csv")[-31, ] %>%
-  mutate(id = paste0(id, "_m"))
+if (task_id < 1 | task_id > length(samples)){
+  stop(paste0("SLURM_ARRAY_TASK_ID (", task_id, ") is out of range for ",
+              length(samples), " samples -- check the --array range in ",
+              "jobs/04_doubletfinder.sh against length(unique(orig.ident))."))
+}
 
-counts <- rbind(brain_counts, sc_counts) %>%
-  rbind(muscle_counts)
+sample_id <- samples[task_id]
 
-# Define function to run DoubletFinder
+message2(paste0("Processing ", sample_id, " (task ", task_id, "/",
+                length(samples), ")"))
+
+# Load and filter this sample's matrix ---------------------------------------
+
+message2("Loading raw per-sample matrix")
+
+# Cell barcodes in the per-sample matrices from 01_obj_creation.R are NOT
+# sample-prefixed (that prefixing happens later, at the whole-cohort merge
+# step), so it's reapplied here to match 03_qc2.R's metadata, whose cell
+# names are "<sample_id>_<barcode>".
+mat <- open_matrix_dir(paste0("data/01_obj_creation/bpcells_persample/",
+                              sample_id))
+colnames(mat) <- paste0(sample_id, "_", colnames(mat))
+
+meta_sample <- meta_all %>%
+  filter(orig.ident == sample_id)
+
+# The doublet rate below uses this PRE-QC-filter cell count on purpose:
+# doublets form during the original partitioning/loading step, so the rate
+# should reflect how many cells were originally captured for this sample,
+# not how many survived 03_qc2.R's QC filtering.
+n_cells_preqc <- nrow(meta_sample)
+
+meta_sample <- meta_sample %>%
+  filter(discard == F) %>%
+  column_to_rownames(var = "cell")
+
+mat <- mat[, rownames(meta_sample)]
+
+doublet_rate <- (n_cells_preqc / 10000) * 0.08
+
+obj <- CreateSeuratObject(counts = mat, meta.data = meta_sample)
+
+# Define function to run DoubletFinder ---------------------------------------
+
 run_doubletfinder <- function(s, doublet_rate) {
-  
-  # Standard normalization and scaling 
+
+  # Standard normalization and scaling
   s <- s %>% NormalizeData() %>% FindVariableFeatures() %>% ScaleData()
-  
-  # Default Seurat clustering and TSNE 
+
+  # Default Seurat clustering and UMAP
   s <- s %>% RunPCA() %>% FindNeighbors(dims = 1:10) %>% FindClusters()
-  s <- RunUMAP(s, dims = 1:10) # had to set check_duplicates to FALSE for some samples
-  
+  s <- RunUMAP(s, dims = 1:10)
+
   # pK Identification (no ground-truth)
-  sweep.res.list <- paramSweep(s, PCs = 1:10, sct = FALSE) 
+  sweep.res.list <- paramSweep(s, PCs = 1:10, sct = FALSE)
   sweep.stats <- summarizeSweep(sweep.res.list, GT = FALSE)
   bcmvn <- find.pK(sweep.stats)
   max_index <- which.max(bcmvn$BCmetric)
   optimal_pK <- as.numeric(as.character(bcmvn[max_index, "pK"]))
-  
+
   # Homotypic Doublet Proportion Estimate
   annotations <- s@meta.data$seurat_clusters
   homotypic.prop <- modelHomotypic(annotations)
   nExp_poi <- round(doublet_rate*nrow(s@meta.data))
   nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
-  
-  # Run DoubletFinder without homotypic adjustment 
+
+  # Run DoubletFinder without homotypic adjustment
   s <- doubletFinder(s, PCs = 1:10, pN = 0.25, pK = optimal_pK, nExp = nExp_poi, reuse.pANN = FALSE, sct = FALSE)
-  
+
   # Rename meta column
   colnames(s@meta.data)[grep("DF.classifications*", colnames(s@meta.data))] <- "DF.unadj"
-  
+
   # Run DoubletFinder with homotypic adjustment
   pANN <- colnames(s@meta.data)[grep("^pANN", colnames(s@meta.data))]
   print(pANN)
   s <- doubletFinder(s, PCs = 1:10, pN = 0.25, pK = optimal_pK, nExp = nExp_poi.adj, reuse.pANN = pANN, sct = FALSE)
-  
+
   # Rename meta column
   colnames(s@meta.data)[grep("DF.classifications*", colnames(s@meta.data))] <- "DF.adj"
-  
-  # Plot unadjusted vs. adjusted doublets in TSNE coordinates
+
+  # Plot unadjusted vs. adjusted doublets in UMAP coordinates
   plt <- ggarrange(
-    (DimPlot_scCustom(s, reduction = "umap", group.by = "DF.unadj", 
-                      pt.size = 1, shuffle = TRUE, alpha = 0.6) + 
+    (DimPlot_scCustom(s, reduction = "umap", group.by = "DF.unadj",
+                      pt.size = 1, shuffle = TRUE, alpha = 0.6) +
        ggtitle("Unadjusted")),
-    (DimPlot_scCustom(s, reduction = "umap", group.by = "DF.adj", 
+    (DimPlot_scCustom(s, reduction = "umap", group.by = "DF.adj",
                       pt.size = 1, shuffle = TRUE, alpha = 0.6) +
        ggtitle("Adjusted for Homotypic Proportion")),
     ncol = 2, nrow = 1,
     common.legend = T, legend = "right"
   )
-  
+
   ggsave(plt,
          filename = paste0(plots_dir, unique(s$orig.ident), "_umap.png"),
          units = "in", dpi = 600,
          height = 5, width = 10)
-  
+
   return(s)
 }
 
-# Split into sample objects
-obj_list <- SplitObject(obj, split.by = "orig.ident")
+message2("Running DoubletFinder")
 
-counts$id %in% names(obj_list)
+obj <- run_doubletfinder(obj, doublet_rate)
 
-idx <- match(counts$id, names(obj_list))
-counts <- counts[idx, ] %>%
-  pull(Cell_count)
+# Save this sample's filtered, DoubletFinder-processed matrix + metadata ----
+message2("Saving filtered, DoubletFinder-processed sample")
 
-doublet_rates <- (counts / 10000) * 0.08
+# Explicit type conversion before writing -- same fix as 01_obj_creation.R's
+# write_matrix_dir() segfault (BPCells' compressed writer needs an explicitly
+# integer-typed matrix). Cheap insurance in case type tagging doesn't survive
+# the round-trip through CreateSeuratObject() and DoubletFinder's own layer
+# manipulation.
+counts_out <- convert_matrix_type(obj[["RNA"]]$counts, type = "uint32_t")
 
-# Run DoubletFinder on all samples
-for (s in seq_along(obj_list)) {
-  message(paste0(
-    paste(rep("~", 40), collapse = ""),
-    "Running ", names(obj_list)[s],
-    paste(rep("~", 40), collapse = "")
-  ))
-  
-  obj_list[[s]] <- run_doubletfinder(obj_list[[s]], doublet_rates[s])
-  saveRDS(obj_list[[s]], 
-          paste0(data_out_dir, names(obj_list)[s], ".rds"))
-  
-  # obj_list[[s]] <- DietSeurat(obj_list[[s]],
-  #                             layers = "counts")
-  # 
-  # obj_list[[s]][["RNA"]]$data <- NULL
-  # obj_list[[s]][["RNA"]]$scale.data <- NULL
-}
+write_matrix_dir(mat = counts_out,
+                 dir = paste0(data_out_dir, "bpcells_persample/", sample_id))
 
-# message("Merging object again") 
-# 
-# obj <- Merge_Seurat_List(obj_list, 
-#                          add.cell.ids = names(obj_list))
-# 
-# message("Joining layers again")
-# 
-# obj <- JoinLayers(obj)
-# 
-# message("Saving full Seurat object as RDS (just in case)")
-# 
-# message("Saving BPCells matrix")
-# 
-# write_matrix_dir(mat = obj[["RNA"]]$counts, 
-#                  dir = data_out_dir)
-# 
-# message("Saving metadata")
-# 
-# saveRDS(obj@meta.data, 
-#         file = paste0(data_out_dir, "metadata.rds"))
-# 
-# message("Done!")
+saveRDS(obj@meta.data,
+        file = paste0(data_out_dir, "metadata_persample/", sample_id, ".rds"))
