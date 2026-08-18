@@ -104,8 +104,8 @@ thresh_df <- thresh_df %>%
   mutate(umi_lower = umi_med - 2*umi_mad,
          feature_lower = feature_med - 2*feature_mad,
          mito_upper = 5,
-         umi_upper = umi_med + 2*umi_mad,
-         feature_upper = feature_med + 2*feature_mad)
+         umi_upper = umi_med + 2.5*umi_mad,
+         feature_upper = feature_med + 2.5*feature_mad)
 
 meta <- meta %>%
   rownames_to_column(var = "cell") %>%
