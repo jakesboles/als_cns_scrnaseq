@@ -5,7 +5,7 @@
 #SBATCH --nodes 1
 #SBATCH --ntasks-per-node 16
 #SBATCH --mem 200G
-#SBATCH --time 6:00:00
+#SBATCH --time 24:00:00
 #SBATCH --output /projects/b1169/boles/als_cns_scrnaseq/logs/%x_%j.log
 #SBATCH --verbose
 
