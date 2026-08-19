@@ -117,11 +117,27 @@ jackstraw_scores <- JS(obj[["pca"]], slot = "overall.p.values") %>%
 message2(paste0("Saving sketched data, PCA, variable features, and ",
                 "JackStraw scores for ", tissue_title))
 
+# SketchData() preserves the per-sample layers it inherited from the split
+# RNA assay in the new "sketch" assay -- it doesn't join them. ScaleData()/
+# RunPCA()/JackStraw() above handle multi-layer assays correctly on their
+# own, but obj[["sketch"]]$data on a still-split assay silently returns
+# only the first sample's layer (with a warning), not the full sketch --
+# this is the first point an explicit join is actually needed.
+obj[["sketch"]] <- JoinLayers(obj[["sketch"]])
+
 tissue_out_dir <- paste0(data_out_dir, tissue_file, "/")
 dir.create(tissue_out_dir, showWarnings = F, recursive = T)
 
+# Removed first if present, so a rerun (e.g. after a bug fix or a failed
+# job) doesn't fail on "Path already exists" against a stale/incomplete
+# directory from a previous attempt.
+bpcells_data_dir <- paste0(tissue_out_dir, "bpcells_data")
+if (dir.exists(bpcells_data_dir)){
+  unlink(bpcells_data_dir, recursive = T)
+}
+
 write_matrix_dir(mat = obj[["sketch"]]$data,
-                 dir = paste0(tissue_out_dir, "bpcells_data"))
+                 dir = bpcells_data_dir)
 
 saveRDS(obj@meta.data,
         file = paste0(tissue_out_dir, "metadata.rds"))
