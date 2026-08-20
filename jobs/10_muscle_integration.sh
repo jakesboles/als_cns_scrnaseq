@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --account b1042
-#SBATCH --partition genomics
+#SBATCH --account b1169
+#SBATCH --partition b1169
 #SBATCH --job-name 10_muscle_integration
 #SBATCH --nodes 1
 #SBATCH --ntasks-per-node 16
