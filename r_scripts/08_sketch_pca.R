@@ -125,6 +125,25 @@ message2(paste0("Saving sketched data, PCA, variable features, and ",
 # this is the first point an explicit join is actually needed.
 obj[["sketch"]] <- JoinLayers(obj[["sketch"]])
 
+# SketchData() prefixes sketch cell names with a leading underscore, to
+# keep them distinct from the same cells' entries in the still-present
+# "RNA" assay within this object (Seurat v5 lets different assays in one
+# object hold different, even overlapping, cell sets, with @meta.data as
+# their union -- obj@meta.data at this point actually spans BOTH assays'
+# cells, not just the sketch subset). Detaching the sketch assay + PCA
+# into their own object before renaming avoids a name collision with any
+# sketch cell that's also present, under its original unprefixed name, in
+# "RNA" -- and explicitly scopes the saved metadata down to just the
+# sketch cells, rather than relying on downstream scripts to implicitly
+# intersect it against the (much smaller) saved matrix. Keeps saved cell
+# names consistent with the "<sample>_<barcode>" format used everywhere
+# else in the pipeline.
+sketch_obj <- CreateSeuratObject(counts = obj[["sketch"]]$data,
+                                 meta.data = obj@meta.data[colnames(obj[["sketch"]]$data), ],
+                                 assay = "sketch")
+sketch_obj[["pca"]] <- obj[["pca"]]
+sketch_obj <- RenameCells(sketch_obj, new.names = str_remove(Cells(sketch_obj), "^_"))
+
 tissue_out_dir <- paste0(data_out_dir, tissue_file, "/")
 dir.create(tissue_out_dir, showWarnings = F, recursive = T)
 
@@ -136,13 +155,13 @@ if (dir.exists(bpcells_data_dir)){
   unlink(bpcells_data_dir, recursive = T)
 }
 
-write_matrix_dir(mat = obj[["sketch"]]$data,
+write_matrix_dir(mat = sketch_obj[["sketch"]]$counts,
                  dir = bpcells_data_dir)
 
-saveRDS(obj@meta.data,
+saveRDS(sketch_obj@meta.data,
         file = paste0(tissue_out_dir, "metadata.rds"))
 
-saveRDS(obj[["pca"]],
+saveRDS(sketch_obj[["pca"]],
         file = paste0(tissue_out_dir, "pca.rds"))
 
 saveRDS(VariableFeatures(obj),
