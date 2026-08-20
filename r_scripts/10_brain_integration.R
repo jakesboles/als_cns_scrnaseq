@@ -99,7 +99,7 @@ ggsave(p,
 
 p <- DimPlot_scCustom(obj,
                       reduction = "cca_umap",
-                      group.by = "Batch",
+                      group.by = "batch",
                       colors_use = DiscretePalette_scCustomize(6,
                                                                palette = "ditto_seq"))
 ggsave(p,
@@ -109,7 +109,7 @@ ggsave(p,
 
 p <- DimPlot_scCustom(obj,
                       reduction = "cca_umap",
-                      group.by = "Group",
+                      group.by = "group",
                       colors_use = JCO_Four())
 ggsave(p,
        filename = paste0(plots_dir, "brain_cca_umap_dimplot_group.png"),
