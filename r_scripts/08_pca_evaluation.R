@@ -22,20 +22,20 @@ message2 <- function(text){
 
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
-plots_dir <- "plots/09_sketch_pca_evaluation/"
+plots_dir <- "plots/08_pca_evaluation/"
 dir.create(plots_dir, showWarnings = F,
            recursive = T)
 
-data_in_dir <- "data/08_sketch_pca/"
+data_in_dir <- "data/07_norm_pca/"
 
 tissues <- data.frame(
   title = c("Motor cortex", "Cervical spinal cord", "Skeletal muscle"),
   file = c("brain", "sc", "muscle")
 )
 
-# Load sketch data + PCA per tissue ------------------------------------------
+# Load data + PCA per tissue ------------------------------------------
 
-message2("Loading sketch objects")
+message2("Loading objects")
 
 obj_list <- list()
 
@@ -57,7 +57,7 @@ for (i in seq_along(tissues$file)){
   # assigned to both "counts" and "data" in case anything later (e.g. a
   # FeaturePlot) expects a normalized "data" layer.
   obj <- CreateSeuratObject(counts = data_mat, meta.data = meta, assay = "sketch")
-  obj[["sketch"]]$data <- data_mat
+  obj[["RNA"]]$data <- data_mat
   obj[["pca"]] <- pca
 
   obj@meta.data <- obj@meta.data %>%
