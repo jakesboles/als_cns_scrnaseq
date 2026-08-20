@@ -85,6 +85,8 @@ for (i in seq_along(tissues$file)){
          bg = "white")
 
   message2(paste0("Making PC loading plots for ", tissue))
+  
+  obj <- ScaleData(obj)
 
   Iterate_PC_Loading_Plots(obj,
                            file_path = plots_dir,
