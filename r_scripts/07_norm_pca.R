@@ -81,18 +81,18 @@ message2("Running PCA")
 
 obj <- RunPCA(obj, npcs = 100)
 
-message2("Running JackStraw")
+# message2("Running JackStraw")
+# 
+# obj <- JackStraw(obj, num.replicate = 100, dims = 100)
+# obj <- ScoreJackStraw(obj, dims = 1:100)
+# 
+# # Saved as a plain data.frame (PC, Score) rather than the full
+# # JackStrawData object attached to the reduction, so 09 can evaluate/plot
+# # this without needing scale.data or the full object reloaded.
+# jackstraw_scores <- JS(obj[["pca"]], slot = "overall.p.values") %>%
+#   as.data.frame()
 
-obj <- JackStraw(obj, num.replicate = 100, dims = 100)
-obj <- ScoreJackStraw(obj, dims = 1:100)
-
-# Saved as a plain data.frame (PC, Score) rather than the full
-# JackStrawData object attached to the reduction, so 09 can evaluate/plot
-# this without needing scale.data or the full object reloaded.
-jackstraw_scores <- JS(obj[["pca"]], slot = "overall.p.values") %>%
-  as.data.frame()
-
-message2("Saving normalized data, PCA, variable features, and JackStraw scores")
+message2("Saving normalized data, PCA, variable features")
 
 tissue_out_dir <- paste0(data_out_dir, tissue_file, "/")
 dir.create(tissue_out_dir, showWarnings = F, recursive = T)
@@ -117,5 +117,5 @@ saveRDS(obj[["pca"]],
 saveRDS(VariableFeatures(obj),
         file = paste0(tissue_out_dir, "variable_features.rds"))
 
-saveRDS(jackstraw_scores,
-        file = paste0(tissue_out_dir, "jackstraw_scores.rds"))
+# saveRDS(jackstraw_scores,
+#         file = paste0(tissue_out_dir, "jackstraw_scores.rds"))
