@@ -2,25 +2,25 @@
 #SBATCH --account b1042
 #SBATCH --partition genomics
 #SBATCH --job-name 07_norm_pca
+#SBATCH --array 1-3
 #SBATCH --nodes 1
 #SBATCH --ntasks-per-node 16
 #SBATCH --mem 200G
 #SBATCH --time 48:00:00
-#SBATCH --output /projects/b1169/boles/als_cns_scrnaseq/logs/%x_%j.log
+#SBATCH --output /projects/b1169/boles/als_cns_scrnaseq/logs/%x_%A_%a.log
 #SBATCH --verbose
 
-# --mem/--time are a rough starting-point estimate, not measured, and
-# genuinely uncertain -- this now runs NormalizeData/ScaleData/RunPCA/
-# JackStraw on each tissue's FULL cell count (tens to hundreds of thousands
-# of cells per tissue), not the 2000-cells/sample sketch the old 07/08 used.
-# JackStraw (100 replicates x 100 dims) is the biggest unknown: its cost
-# scales with cell count, and it was only ever run at sketch scale before,
-# so there's no prior data point for how long it takes at full scale. Watch
-# the first run closely -- if JackStraw is the bottleneck, num.replicate is
-# the parameter to reconsider (a scientific tradeoff, not changed here).
-# --mem sized similarly to 06_obj_reassembly.sh's 200G (same order of
-# magnitude of cells, just one tissue instead of the whole cohort at once).
-# Check `seff <jobid>` after this runs and adjust both values.
+# --array must match nrow(tissues) in 07_norm_pca.R -- currently 3 (brain,
+# spinal cord, muscle). 07_norm_pca.R will fail fast with a clear error if
+# these get out of sync.
+#
+# --mem/--time are unchanged per-task from the single-job version (still a
+# rough, unmeasured estimate) -- each task now handles one tissue's full
+# cell count instead of the job looping over all 3 sequentially, so this
+# should only reduce total wall-clock time (3 tissues in parallel instead
+# of one after another), not change what any single tissue needs. JackStraw
+# (100 replicates x 100 dims) is still the biggest unknown -- watch the
+# first tasks closely and check `seff <jobid>_<taskid>` once they finish.
 
 module load R/4.4.0
 module load hdf5/1.14.1-2-gcc-12.3.0
