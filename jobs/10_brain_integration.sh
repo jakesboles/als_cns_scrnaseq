@@ -4,8 +4,8 @@
 #SBATCH --job-name 10_brain_integration
 #SBATCH --nodes 1
 #SBATCH --ntasks-per-node 16
-#SBATCH --mem 64G
-#SBATCH --time 6:00:00
+#SBATCH --mem 150G
+#SBATCH --time 48:00:00
 #SBATCH --output /projects/b1169/boles/als_cns_scrnaseq/logs/%x_%j.log
 #SBATCH --verbose
 
