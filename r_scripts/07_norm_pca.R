@@ -1,8 +1,8 @@
-# Normalizes counts and finds variable features per tissue, ahead of the
-# sketch-based dimensional reduction workflow Seurat recommends for datasets
-# this size (see 08, not yet written). Splitting layers by orig.ident for
-# SketchData() is deferred to 08 -- it's cheap structural bookkeeping, not
-# real computation, so there's nothing to gain from persisting it here.
+# Normalizes counts, finds variable features, scales, runs PCA, and runs
+# JackStraw per tissue, on the full (non-sketched) data. Saves the
+# normalized data, PCA, variable features, and JackStraw scores as BPCells/
+# RDS output for the next steps: appraising the PCA to pick integration
+# parameters, then integration itself.
 
 # Load libraries
 suppressMessages({
@@ -68,8 +68,9 @@ for (i in seq_along(tissues$title)){
   jackstraw_scores <- JS(obj[["pca"]], slot = "overall.p.values") %>%
     as.data.frame()
   
-  message2("Saving sketched data, PCA, variable features, and JackStraw scores")
-  
+  message2("Saving normalized data, PCA, variable features, and JackStraw scores")
+
+  tissue_file <- tissues$file[i]
   tissue_out_dir <- paste0(data_out_dir, tissue_file, "/")
   dir.create(tissue_out_dir, showWarnings = F, recursive = T)
   
