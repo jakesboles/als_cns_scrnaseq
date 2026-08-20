@@ -168,6 +168,50 @@ for (i in seq_along(tissues$file)){
          filename = paste0(plots_dir, tissue, "_pca_dimplot_site.png"),
          units = "in", dpi = 600,
          height = 10, width = 12)
+  
+  message2(paste0("Making JackStraw plot for ", tissue))
+  
+  js <- readRDS(paste0(data_in_dir, tissue, "/jackstraw_scores.rds"))
+  
+  p <- js %>%
+    ggplot(aes(x = PC, y = Score)) +
+    geom_point(aes(color = Score < 0.05)) +
+    geom_hline(yintercept = 0.05, linetype = "dashed", color = "red") +
+    scale_color_manual(values = c("gray60", "black")) +
+    labs(y = "JackStraw p-value",
+         color = "p < 0.05") +
+    theme_bw()
+  
+  ggsave(p,
+         filename = paste0(plots_dir, tissue, "_jackstraw.png"),
+         units = "in", dpi = 600,
+         height = 5, width = 8)
+  
+  suggested_pcs <- max(js$PC[js$Score < 0.05])
+  message(paste0("Suggested # PCs (largest with JackStraw p < 0.05) for ",
+                 tissue, ": ", suggested_pcs))
+  
+  message2(paste0("Finding PCA elbow for ", tissue))
+  
+  find_elbow <- function(stdev){
+    n <- length(stdev)
+    
+    line_vec <- c(n - 1, stdev[n] - stdev[1])
+    line_vec <- line_vec / sqrt(sum(line_vec^2))
+    
+    vecs <- cbind((1:n) - 1, stdev - stdev[1])
+    proj_len <- vecs %*% line_vec
+    proj <- proj_len %*% line_vec
+    perp <- vecs - proj
+    dist <- sqrt(rowSums(perp^2))
+    
+    which.max(dist)
+  }
+  
+  # pca <- readRDS(paste0(data_in_dir, tissue, "/pca.rds"))
+  elbow_pc <- find_elbow(Stdev(pca))
+  message(paste0("Suggested # PCs (max-distance elbow) for ", tissue, ": ",
+                 elbow_pc))
 }
 
 # Cluster cells and compute UMAP ---------------------------------------------
@@ -182,43 +226,48 @@ for (i in seq_along(tissues$file)){
     FindNeighbors(dims = 1:30) %>%
     RunUMAP(dims = 1:30)
 
-  DimPlot_scCustom(obj,
+  p <- DimPlot_scCustom(obj,
                    reduction = "umap",
                    group.by = "tissue",
                    colors_use = JCO_Four())
-  ggsave(paste0(plots_dir, tissue, "_umap_dimplot_tissue.png"),
+  ggsave(p,
+         paste0(plots_dir, tissue, "_umap_dimplot_tissue.png"),
          units = "in", dpi = 600,
          height = 5, width = 6)
 
-  DimPlot_scCustom(obj,
+  p <- DimPlot_scCustom(obj,
                    reduction = "umap",
                    group.by = "Batch",
                    colors_use = DiscretePalette_scCustomize(6,
                                                             palette = "ditto_seq"))
-  ggsave(paste0(plots_dir, tissue, "_umap_dimplot_batch.png"),
+  ggsave(p,
+         paste0(plots_dir, tissue, "_umap_dimplot_batch.png"),
          units = "in", dpi = 600,
          height = 5, width = 6)
 
-  DimPlot_scCustom(obj,
+  p <- DimPlot_scCustom(obj,
                    reduction = "umap",
                    group.by = "Group",
                    colors_use = JCO_Four())
-  ggsave(paste0(plots_dir, tissue, "_umap_dimplot_group.png"),
+  ggsave(p,
+         paste0(plots_dir, tissue, "_umap_dimplot_group.png"),
          units = "in", dpi = 600,
          height = 5, width = 6)
 
-  DimPlot_scCustom(obj,
+  p <- DimPlot_scCustom(obj,
                    group.by = "id",
                    reduction = "umap")
-  ggsave(paste0(plots_dir, tissue, "_umap_dimplot_id.png"),
+  ggsave(p,
+         paste0(plots_dir, tissue, "_umap_dimplot_id.png"),
          units = "in", dpi = 600,
          height = 5, width = 8)
 
-  DimPlot_scCustom(obj,
+  p <- DimPlot_scCustom(obj,
                    group.by = "site",
                    reduction = "umap",
                    colors_use = JCO_Four())
-  ggsave(paste0(plots_dir, tissue, "_umap_dimplot_site.png"),
+  ggsave(p,
+         paste0(plots_dir, tissue, "_umap_dimplot_site.png"),
          units = "in", dpi = 600,
          height = 5, width = 8)
 }
