@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --account b1169
-#SBATCH --partition b1169
+#SBATCH --account b1042
+#SBATCH --partition genomics
 #SBATCH --job-name 07_norm_pca
 #SBATCH --nodes 1
 #SBATCH --ntasks-per-node 16
 #SBATCH --mem 200G
-#SBATCH --time 24:00:00
+#SBATCH --time 48:00:00
 #SBATCH --output /projects/b1169/boles/als_cns_scrnaseq/logs/%x_%j.log
 #SBATCH --verbose
 
