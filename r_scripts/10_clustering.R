@@ -24,7 +24,7 @@ suppressMessages({
 })
 
 options(reticulate.verbose = TRUE)
-py_module_available(module = "leidenalg")
+# py_module_available(module = "leidenalg")
 
 message2 <- function(text){
   v1 <- paste(rep("~", 15),
@@ -63,7 +63,7 @@ message2(paste0("Processing ", tissue_title, " (task ", task_id, "/",
 
 data_in_dir <- paste0("data/09_integration/", tissue_file, "/")
 
-plots_dir <- "plots/10_clustering/"
+plots_dir <- paste0("plots/10_clustering/", tissue_file, "/")
 dir.create(plots_dir, showWarnings = F,
            recursive = T)
 
@@ -139,7 +139,7 @@ for (res in res_tests){
                         reduction = "harmony_umap")
 
   ggsave(p,
-         filename = paste0(plots_dir, tissue_file, "_res", res, ".png"),
+         filename = paste0(plots_dir, "res", res, ".png"),
          units = "in", dpi = 600,
          height = 5, width = 6)
 }
@@ -196,7 +196,7 @@ for (res in res_tests){
           plot.title = element_text(hjust = 0.5))
 
   ggsave(p,
-         filename = paste0(plots_dir, tissue_file, "_cluster_silhouette_res",
+         filename = paste0(plots_dir, "cluster_silhouette_res",
                            res, ".png"),
          units = "in", dpi = 600,
          height = 4, width = 6)
@@ -209,7 +209,7 @@ for (res in res_tests){
     scale_fill_manual(values = pal)
 
   ggsave(p,
-         filename = paste0(plots_dir, tissue_file, "_cluster_sil_width_res",
+         filename = paste0(plots_dir, "cluster_sil_width_res",
                            res, ".png"),
          units = "in", dpi = 600,
          height = 4, width = 6)
@@ -245,8 +245,7 @@ for (res in res_tests){
       panel.grid = element_blank(),
       axis.text.x = element_text(color = "black", face = "bold"))
   ggsave(p,
-         filename = paste0(plots_dir, tissue_file,
-                          "_cluster_alluvial_res", res, ".png"),
+         filename = paste0(plots_dir, "cluster_alluvial_res", res, ".png"),
          units = "in", dpi = 600, bg = "white",
          height = 12, width = 3)
 }
