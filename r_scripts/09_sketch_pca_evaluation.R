@@ -233,26 +233,26 @@ for (i in seq_along(tissues$file)){
                    group.by = "tissue",
                    colors_use = JCO_Four())
   ggsave(p,
-         paste0(plots_dir, tissue, "_umap_dimplot_tissue.png"),
+         filename = paste0(plots_dir, tissue, "_umap_dimplot_tissue.png"),
          units = "in", dpi = 600,
          height = 5, width = 6)
 
   p <- DimPlot_scCustom(obj,
                    reduction = "umap",
-                   group.by = "Batch",
+                   group.by = "batch",
                    colors_use = DiscretePalette_scCustomize(6,
                                                             palette = "ditto_seq"))
   ggsave(p,
-         paste0(plots_dir, tissue, "_umap_dimplot_batch.png"),
+         filename = paste0(plots_dir, tissue, "_umap_dimplot_batch.png"),
          units = "in", dpi = 600,
          height = 5, width = 6)
 
   p <- DimPlot_scCustom(obj,
                    reduction = "umap",
-                   group.by = "Group",
+                   group.by = "group",
                    colors_use = JCO_Four())
   ggsave(p,
-         paste0(plots_dir, tissue, "_umap_dimplot_group.png"),
+         filename = paste0(plots_dir, tissue, "_umap_dimplot_group.png"),
          units = "in", dpi = 600,
          height = 5, width = 6)
 
@@ -260,7 +260,7 @@ for (i in seq_along(tissues$file)){
                    group.by = "id",
                    reduction = "umap")
   ggsave(p,
-         paste0(plots_dir, tissue, "_umap_dimplot_id.png"),
+         filename = paste0(plots_dir, tissue, "_umap_dimplot_id.png"),
          units = "in", dpi = 600,
          height = 5, width = 8)
 
@@ -269,7 +269,7 @@ for (i in seq_along(tissues$file)){
                    reduction = "umap",
                    colors_use = JCO_Four())
   ggsave(p,
-         paste0(plots_dir, tissue, "_umap_dimplot_site.png"),
+         filename = paste0(plots_dir, tissue, "_umap_dimplot_site.png"),
          units = "in", dpi = 600,
          height = 5, width = 8)
 }
