@@ -1,5 +1,5 @@
 # Computes a neighbor graph/UMAP and Leiden-clusters one tissue's
-# CCA-integrated data across a range of resolutions, scoring each with
+# harmony-integrated data across a range of resolutions, scoring each with
 # silhouette width, for the user to pick a resolution to carry forward.
 # Runs as a SLURM job array (see jobs/10_clustering.sh), one task per
 # tissue, since all 3 tissues are fully independent (same restructuring as
@@ -7,7 +7,7 @@
 # (FindAllMarkers()) only needs cluster labels plus the expression data
 # already saved by 09_*_integration.R, which this script doesn't touch --
 # so metadata.rds (with one "resX_clusters" column per tested resolution)
-# is the only required output. The CCA UMAP is also saved for
+# is the only required output. The harmony UMAP is also saved for
 # convenience/plotting, but isn't needed by 11.
 
 # Load libraries
@@ -71,17 +71,17 @@ data_out_dir <- paste0("data/10_clustering/", tissue_file, "/")
 dir.create(data_out_dir, showWarnings = F,
            recursive = T)
 
-# Load the CCA-integrated object from 09 ---------------------------------
+# Load the harmony-integrated object from 09 ---------------------------------
 
 message2("Reading in integrated object")
 
 data_mat <- open_matrix_dir(paste0(data_in_dir, "bpcells_data"))
 meta <- readRDS(paste0(data_in_dir, "metadata.rds"))
-cca <- readRDS(paste0(data_in_dir, "cca.rds"))
+harmony <- readRDS(paste0(data_in_dir, "harmony.rds"))
 
 obj <- CreateSeuratObject(counts = data_mat, meta.data = meta, assay = "RNA")
 obj[["RNA"]]$data <- data_mat
-obj[["cca"]] <- cca
+obj[["harmony"]] <- harmony
 
 # Compute the NN graph and UMAP ------------------------------------------
 # This is closer to how Scanpy runs these computations, although not
@@ -92,13 +92,13 @@ obj[["cca"]] <- cca
 message2("Computing neighbor graph and UMAP")
 
 obj <- obj %>%
-  FindNeighbors(reduction = "cca",
+  FindNeighbors(reduction = "harmony",
                 dims = 1:20,
                 k.param = 15,
                 nn.method = "annoy",
                 annoy.metric = "euclidean",
                 return.neighbor = T) %>%
-  FindNeighbors(reduction = "cca",
+  FindNeighbors(reduction = "harmony",
                 dims = 1:20,
                 k.param = 15,
                 nn.method = "annoy",
@@ -109,7 +109,7 @@ obj <- obj %>%
           metric = "euclidean",
           min.dist = 0.5,
           n_neighbors = 15L,
-          reduction.name = "cca_umap",
+          reduction.name = "harmony_umap",
           return.model = T)
 
 # Cluster cells at several resolutions ------------------------------------
@@ -136,7 +136,7 @@ for (res in res_tests){
   p <- DimPlot_scCustom(obj,
                         group.by = paste0("res", res, "_clusters"),
                         label = F,
-                        reduction = "cca_umap")
+                        reduction = "harmony_umap")
 
   ggsave(p,
          filename = paste0(plots_dir, "res", res, ".png"),
@@ -145,14 +145,14 @@ for (res in res_tests){
 }
 
 # Compute silhouette scores for each clustering resolution ----------------
-# The distance matrix is computed once (on the CCA embedding) and reused
+# The distance matrix is computed once (on the harmony embedding) and reused
 # across all resolutions below, rather than recomputed each time -- note
 # this is an O(cells^2) matrix, which may be memory-heavy for the larger
 # tissues.
 
 message2("Computing distance matrix for silhouette scoring")
 
-dist_mat <- dist(x = Embeddings(object = obj[["cca"]])[, 1:20])
+dist_mat <- dist(x = Embeddings(object = obj[["harmony"]])[, 1:20])
 
 sil_df <- data.frame(cell = attr(dist_mat, "Labels"))
 
@@ -260,5 +260,5 @@ saveRDS(obj@meta.data,
 
 # Not required by 11, but saved for convenience/plotting since it isn't
 # cheap to recompute.
-saveRDS(obj[["cca_umap"]],
-        file = paste0(data_out_dir, "cca_umap.rds"))
+saveRDS(obj[["harmony_umap"]],
+        file = paste0(data_out_dir, "harmony_umap.rds"))
