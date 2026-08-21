@@ -56,7 +56,7 @@ for (i in seq_along(tissues$file)){
   # initialize, and it's the same sketch data 08 already wrote, so it's
   # assigned to both "counts" and "data" in case anything later (e.g. a
   # FeaturePlot) expects a normalized "data" layer.
-  obj <- CreateSeuratObject(counts = data_mat, meta.data = meta, assay = "sketch")
+  obj <- CreateSeuratObject(counts = data_mat, meta.data = meta, assay = "RNA")
   obj[["RNA"]]$data <- data_mat
   obj[["pca"]] <- pca
 
