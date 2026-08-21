@@ -24,7 +24,7 @@ setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
 data_in_dir <- "data/07_norm_pca/sc/"
 
-plots_dir <- "plots/09_integration/"
+plots_dir <- "plots/09_integration/sc/"
 dir.create(plots_dir, showWarnings = F,
            recursive = T)
 
@@ -84,7 +84,7 @@ p <- DimPlot_scCustom(obj,
                       group.by = "tissue",
                       colors_use = JCO_Four())
 ggsave(p,
-       filename = paste0(plots_dir, "sc_harmony_umap_dimplot_tissue.png"),
+       filename = paste0(plots_dir, "harmony_umap_dimplot_tissue.png"),
        units = "in", dpi = 600,
        height = 5, width = 6)
 
@@ -94,7 +94,7 @@ p <- DimPlot_scCustom(obj,
                       colors_use = DiscretePalette_scCustomize(6,
                                                                palette = "ditto_seq"))
 ggsave(p,
-       filename = paste0(plots_dir, "sc_harmony_umap_dimplot_batch.png"),
+       filename = paste0(plots_dir, "harmony_umap_dimplot_batch.png"),
        units = "in", dpi = 600,
        height = 5, width = 6)
 
@@ -103,7 +103,7 @@ p <- DimPlot_scCustom(obj,
                       group.by = "group",
                       colors_use = JCO_Four())
 ggsave(p,
-       filename = paste0(plots_dir, "sc_harmony_umap_dimplot_group.png"),
+       filename = paste0(plots_dir, "harmony_umap_dimplot_group.png"),
        units = "in", dpi = 600,
        height = 5, width = 6)
 
@@ -111,7 +111,7 @@ p <- DimPlot_scCustom(obj,
                       group.by = "id",
                       reduction = "harmony_umap")
 ggsave(p,
-       filename = paste0(plots_dir, "sc_harmony_umap_dimplot_id.png"),
+       filename = paste0(plots_dir, "harmony_umap_dimplot_id.png"),
        units = "in", dpi = 600,
        height = 5, width = 8)
 
