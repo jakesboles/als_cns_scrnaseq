@@ -1,10 +1,10 @@
-# Integrates the skeletal muscle data across samples using Harmony, on
-# top of the PCA computed in 07_norm_pca.R. Writes the integrated
-# ("harmony") reduction alongside the normalized data as an on-disk BPCells
-# matrix, for 11_clustering.R to load and Leiden-cluster. Clustering itself
-# (and any marker-gene/cell-type inspection) is deliberately left to
-# 11/later steps -- this script's job ends at producing a corrected
-# embedding, plus a few plots to sanity check that the correction worked.
+# Integrates the skeletal muscle data across samples using CCA, on top of
+# the PCA computed in 07_norm_pca.R. Writes the integrated ("cca")
+# reduction alongside the normalized data as an on-disk BPCells matrix, for
+# 10_clustering.R to load and Leiden-cluster. Clustering itself (and any
+# marker-gene/cell-type inspection) is deliberately left to 10/later steps
+# -- this script's job ends at producing a corrected embedding, plus a few
+# plots to sanity check that the correction worked.
 
 # Load libraries
 suppressMessages({
@@ -54,12 +54,23 @@ VariableFeatures(obj) <- readRDS(paste0(data_in_dir, "variable_features.rds"))
 # joined into one matrix, so it isn't split until it's actually needed here.
 obj[["RNA"]] <- split(obj[["RNA"]], f = obj$orig.ident)
 
-message2("Integrating samples using Harmony")
+message2("Integrating samples using CCA")
 
+# reference restricts anchor-finding to these 2 samples vs. every other
+# sample, rather than every possible pair (O(n) instead of O(n^2) anchor
+# computations) -- carried over from the earlier (sketch-data) version of
+# this script's choice of reference samples. CCA needs dense access to
+# expression data (unlike Harmony, which only needs the PCA embedding), so
+# expect a "on-disk CCA Integration is not currently supported" warning --
+# Seurat falls back to converting the BPCells matrix to an in-memory
+# dgCMatrix internally to run this.
 obj <- IntegrateLayers(obj,
-                       method = "HarmonyIntegration",
+                       method = "CCAIntegration",
                        orig.reduction = "pca",
-                       new.reduction = "harmony",
+                       new.reduction = "cca",
+                       k.anchor = 20,
+                       reference = which(Layers(obj, search = "data") %in%
+                                           c("data.GBB-23-11_m", "data.AU-073_m")),
                        dims = 1:20)
 
 # IntegrateLayers() only adds the new reduction -- it doesn't touch/join the
@@ -68,54 +79,54 @@ obj[["RNA"]] <- JoinLayers(obj[["RNA"]])
 
 message2("Computing UMAP for integration diagnostics")
 
-# For sanity-checking the integration below only -- 11_clustering.R computes
+# For sanity-checking the integration below only -- 10_clustering.R computes
 # its own UMAP with different parameters as part of its Leiden clustering
 # workflow, so this one isn't saved.
 obj <- RunUMAP(obj,
                dims = 1:20,
-               reduction = "harmony",
-               reduction.name = "harmony_umap",
-               reduction.key = "harmonyumap_")
+               reduction = "cca",
+               reduction.name = "cca_umap",
+               reduction.key = "ccaumap_")
 
 message2("Making integration diagnostic plots")
 
 p <- DimPlot_scCustom(obj,
-                      reduction = "harmony_umap",
+                      reduction = "cca_umap",
                       group.by = "tissue",
                       colors_use = JCO_Four())
 ggsave(p,
-       filename = paste0(plots_dir, "harmony_umap_dimplot_tissue.png"),
+       filename = paste0(plots_dir, "cca_umap_dimplot_tissue.png"),
        units = "in", dpi = 600,
        height = 5, width = 6)
 
 p <- DimPlot_scCustom(obj,
-                      reduction = "harmony_umap",
+                      reduction = "cca_umap",
                       group.by = "batch",
                       colors_use = DiscretePalette_scCustomize(6,
                                                                palette = "ditto_seq"))
 ggsave(p,
-       filename = paste0(plots_dir, "harmony_umap_dimplot_batch.png"),
+       filename = paste0(plots_dir, "cca_umap_dimplot_batch.png"),
        units = "in", dpi = 600,
        height = 5, width = 6)
 
 p <- DimPlot_scCustom(obj,
-                      reduction = "harmony_umap",
+                      reduction = "cca_umap",
                       group.by = "group",
                       colors_use = JCO_Four())
 ggsave(p,
-       filename = paste0(plots_dir, "harmony_umap_dimplot_group.png"),
+       filename = paste0(plots_dir, "cca_umap_dimplot_group.png"),
        units = "in", dpi = 600,
        height = 5, width = 6)
 
 p <- DimPlot_scCustom(obj,
                       group.by = "id",
-                      reduction = "harmony_umap")
+                      reduction = "cca_umap")
 ggsave(p,
-       filename = paste0(plots_dir, "harmony_umap_dimplot_id.png"),
+       filename = paste0(plots_dir, "cca_umap_dimplot_id.png"),
        units = "in", dpi = 600,
        height = 5, width = 8)
 
-message2("Saving Harmony-integrated data")
+message2("Saving CCA-integrated data")
 
 # Removed first if present, so a rerun (e.g. while tuning integration
 # parameters) doesn't fail on "Path already exists" against a stale
@@ -131,5 +142,5 @@ write_matrix_dir(mat = obj[["RNA"]]$data,
 saveRDS(obj@meta.data,
         file = paste0(data_out_dir, "metadata.rds"))
 
-saveRDS(obj[["harmony"]],
-        file = paste0(data_out_dir, "harmony.rds"))
+saveRDS(obj[["cca"]],
+        file = paste0(data_out_dir, "cca.rds"))

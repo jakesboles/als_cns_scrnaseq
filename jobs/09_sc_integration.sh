@@ -9,13 +9,13 @@
 #SBATCH --output /projects/b1169/boles/als_cns_scrnaseq/logs/%x_%j.log
 #SBATCH --verbose
 
-# --mem/--time are carried over unchanged from the previous (CCA, sketch
-# data) version of this job -- genuinely uncertain now given two things
-# changed at once: this runs on the full per-tissue data from 07_norm_pca.R
-# instead of the 2000-cells/sample sketch, but Harmony integrates in the
-# already-small PCA embedding space rather than needing dense access to
-# expression data the way CCA did, so it may not need as much. Check
-# `seff <jobid>` after this runs and adjust.
+# --mem/--time are carried over unchanged from the Harmony version of this
+# job, itself unmeasured -- back on CCA now, which is the heaviest
+# combination tried yet: full per-tissue data (not the 2000-cells/sample
+# sketch this was last measured on) plus CCA's dense expression access
+# (not Harmony's PCA-embedding-only approach). Watch this closely and check
+# `seff <jobid>` after it runs -- if it's too slow, k.anchor (currently 20,
+# vs. Seurat's default of 5) is the next lever to try lowering.
 
 module load R/4.4.0
 module load hdf5/1.14.1-2-gcc-12.3.0
