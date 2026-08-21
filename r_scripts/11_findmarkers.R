@@ -33,7 +33,7 @@ setwd("/projects/b1169/boles/als_cns_scrnaseq")
 tissues <- data.frame(
   title = c("Motor cortex", "Cervical spinal cord", "Skeletal muscle"),
   file = c("brain", "sc", "muscle"),
-  resolution = c(1, 1.2, 1)
+  resolution = c(1, 1, 1.2)
 )
 
 # Figure out which tissue this task handles ---------------------------------
