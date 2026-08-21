@@ -59,18 +59,37 @@ message2("Integrating samples using CCA")
 # reference restricts anchor-finding to these 2 samples vs. every other
 # sample, rather than every possible pair (O(n) instead of O(n^2) anchor
 # computations) -- carried over from the earlier (sketch-data) version of
-# this script's choice of reference samples. CCA needs dense access to
-# expression data (unlike Harmony, which only needs the PCA embedding), so
-# expect a "on-disk CCA Integration is not currently supported" warning --
-# Seurat falls back to converting the BPCells matrix to an in-memory
-# dgCMatrix internally to run this.
+# this script's choice of reference samples.
+#
+# reference must be an integer index into the per-sample "data" layers, in
+# the order IntegrateLayers() sees them. The original approach here,
+# `which(Layers(obj, search = "data") %in% c(...))`, is what crashed the
+# earlier sketch-data CCA attempt: on this Seurat/SeuratObject version,
+# Layers(obj, search = "data") warns "No layers found matching search
+# pattern provided" and returns nothing, so `reference` silently becomes
+# integer(0) instead of the intended 2 indices -- IntegrateLayers() then
+# mishandles that empty reference internally (repeated "only the first
+# layer is used" warnings, then a crash trying to subset barcodes that
+# don't exist under a mangled "_<sample>_<barcode>" name).
+#
+# split() (above) sorts its resulting per-sample layers alphabetically by
+# orig.ident (orig.ident is a plain character column throughout this
+# pipeline, never a factor with a custom level order -- see 03_qc2.R/
+# 04_doubletfinder.R using the same sort(unique(...)) assumption), so the
+# reference indices can be computed directly from sample IDs instead,
+# without going through Layers() at all.
+#
+# CCA needs dense access to expression data (unlike Harmony, which only
+# needs the PCA embedding), so expect a "on-disk CCA Integration is not
+# currently supported" warning -- Seurat falls back to converting the
+# BPCells matrix to an in-memory dgCMatrix internally to run this.
 obj <- IntegrateLayers(obj,
                        method = "CCAIntegration",
                        orig.reduction = "pca",
                        new.reduction = "cca",
                        k.anchor = 20,
-                       reference = which(Layers(obj, search = "data") %in%
-                                           c("data.GBB-23-11_b", "data.GWF19-47_b")),
+                       reference = which(sort(unique(obj$orig.ident)) %in%
+                                           c("GBB-23-11_b", "GWF19-47_b")),
                        dims = 1:20)
 
 # IntegrateLayers() only adds the new reduction -- it doesn't touch/join the
