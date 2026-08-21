@@ -30,7 +30,7 @@ for (i in seq_along(obj_list)){
 
   write.csv(markers,
             file = paste0(csv_dir, names(obj_list)[i],
-                          "_res", res_choices[i], "_markers.csv"))
+                          "_markers.csv"))
   
   Create_Cluster_Annotation_File(file_path = csv_dir,
                                  file_name = paste0(names(obj_list)[i], "_res", res_choices[i], "_annotations"))
