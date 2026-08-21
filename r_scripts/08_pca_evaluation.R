@@ -171,27 +171,27 @@ for (i in seq_along(tissues$file)){
          units = "in", dpi = 600,
          height = 10, width = 12)
   
-  message2(paste0("Making JackStraw plot for ", tissue))
-  
-  js <- readRDS(paste0(data_in_dir, tissue, "/jackstraw_scores.rds"))
-  
-  p <- js %>%
-    ggplot(aes(x = PC, y = Score)) +
-    geom_point(aes(color = Score < 0.05)) +
-    geom_hline(yintercept = 0.05, linetype = "dashed", color = "red") +
-    scale_color_manual(values = c("gray60", "black")) +
-    labs(y = "JackStraw p-value",
-         color = "p < 0.05") +
-    theme_bw()
-  
-  ggsave(p,
-         filename = paste0(plots_dir, tissue, "_jackstraw.png"),
-         units = "in", dpi = 600,
-         height = 5, width = 8)
-  
-  suggested_pcs <- max(js$PC[js$Score < 0.05])
-  message(paste0("Suggested # PCs (largest with JackStraw p < 0.05) for ",
-                 tissue, ": ", suggested_pcs))
+  # message2(paste0("Making JackStraw plot for ", tissue))
+  # 
+  # js <- readRDS(paste0(data_in_dir, tissue, "/jackstraw_scores.rds"))
+  # 
+  # p <- js %>%
+  #   ggplot(aes(x = PC, y = Score)) +
+  #   geom_point(aes(color = Score < 0.05)) +
+  #   geom_hline(yintercept = 0.05, linetype = "dashed", color = "red") +
+  #   scale_color_manual(values = c("gray60", "black")) +
+  #   labs(y = "JackStraw p-value",
+  #        color = "p < 0.05") +
+  #   theme_bw()
+  # 
+  # ggsave(p,
+  #        filename = paste0(plots_dir, tissue, "_jackstraw.png"),
+  #        units = "in", dpi = 600,
+  #        height = 5, width = 8)
+  # 
+  # suggested_pcs <- max(js$PC[js$Score < 0.05])
+  # message(paste0("Suggested # PCs (largest with JackStraw p < 0.05) for ",
+  #                tissue, ": ", suggested_pcs))
   
   message2(paste0("Finding PCA elbow for ", tissue))
   
