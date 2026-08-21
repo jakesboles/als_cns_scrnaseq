@@ -49,6 +49,22 @@ obj[["pca"]] <- pca
 # against every gene instead of the already-selected variable ones.
 VariableFeatures(obj) <- readRDS(paste0(data_in_dir, "variable_features.rds"))
 
+# CCA needs dense access to expression data (unlike Harmony, which only
+# needs the PCA embedding). IntegrateLayers() will do this conversion
+# itself if asked to (hence the "on-disk CCA Integration is not currently
+# supported" warning below), but doing it mid-integration on a BPCells-
+# backed *split* assay hits a known Seurat/BPCells layer-recognition bug:
+# Layers(obj, search = "data") returns nothing on such an assay (see
+# satijalab/seurat#8004, #7113), which cascades into IntegrateLayers()
+# mishandling per-sample layers and crashing trying to subset barcodes
+# under a mangled "_<sample>_<barcode>" name that doesn't exist. This is
+# NOT caused by this script's own reference= computation below (a
+# previous fix attempt assumed it was and didn't resolve the crash) --
+# converting explicitly here, before split(), avoids the buggy path
+# entirely by never letting a BPCells-backed split assay reach
+# IntegrateLayers() in the first place.
+obj[["RNA"]]$data <- as(obj[["RNA"]]$data, "dgCMatrix")
+
 # Split by sample right before IntegrateLayers(), which needs per-sample
 # layers to integrate across -- 07_norm_pca.R saves this data already
 # joined into one matrix, so it isn't split until it's actually needed here.
@@ -62,27 +78,14 @@ message2("Integrating samples using CCA")
 # this script's choice of reference samples.
 #
 # reference must be an integer index into the per-sample "data" layers, in
-# the order IntegrateLayers() sees them. The original approach here,
-# `which(Layers(obj, search = "data") %in% c(...))`, is what crashed the
-# earlier sketch-data CCA attempt: on this Seurat/SeuratObject version,
-# Layers(obj, search = "data") warns "No layers found matching search
-# pattern provided" and returns nothing, so `reference` silently becomes
-# integer(0) instead of the intended 2 indices -- IntegrateLayers() then
-# mishandles that empty reference internally (repeated "only the first
-# layer is used" warnings, then a crash trying to subset barcodes that
-# don't exist under a mangled "_<sample>_<barcode>" name).
-#
-# split() (above) sorts its resulting per-sample layers alphabetically by
-# orig.ident (orig.ident is a plain character column throughout this
-# pipeline, never a factor with a custom level order -- see 03_qc2.R/
-# 04_doubletfinder.R using the same sort(unique(...)) assumption), so the
-# reference indices can be computed directly from sample IDs instead,
-# without going through Layers() at all.
-#
-# CCA needs dense access to expression data (unlike Harmony, which only
-# needs the PCA embedding), so expect a "on-disk CCA Integration is not
-# currently supported" warning -- Seurat falls back to converting the
-# BPCells matrix to an in-memory dgCMatrix internally to run this.
+# the order IntegrateLayers() sees them. split() (above) sorts its
+# resulting per-sample layers alphabetically by orig.ident (orig.ident is
+# a plain character column throughout this pipeline, never a factor with
+# a custom level order -- see 03_qc2.R/04_doubletfinder.R using the same
+# sort(unique(...)) assumption), so the reference indices are computed
+# directly from sorted sample IDs rather than via Layers(obj, search=
+# "data") (see the comment above the dgCMatrix conversion for why that's
+# avoided here).
 obj <- IntegrateLayers(obj,
                        method = "CCAIntegration",
                        orig.reduction = "pca",
