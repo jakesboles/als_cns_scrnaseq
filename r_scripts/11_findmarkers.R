@@ -73,6 +73,19 @@ message2("Reading in expression data and cluster labels")
 data_mat <- open_matrix_dir(paste0(data_in_dir, "bpcells_data"))
 meta <- readRDS(paste0(clusters_in_dir, "metadata.rds"))
 
+message2("Transposing matrix to row-major order for FindAllMarkers()")
+
+# 09_integration's bpcells_data is stored column-major (cell-major),
+# which suits the cell-wise operations upstream (PCA, clustering) but not
+# FindAllMarkers(), which iterates per-gene (row-major) across all cells.
+# Left as-is, Seurat has to repeatedly re-transpose small chunks live
+# during the test loop instead ("Column-major order detected..."
+# warning), which is much slower than transposing once up front.
+# transpose_storage_order() writes this transposed copy to a temp
+# directory local to this run -- it doesn't touch the shared
+# data/09_integration/<tissue>/bpcells_data other scripts read.
+data_mat <- transpose_storage_order(data_mat)
+
 obj <- CreateSeuratObject(counts = data_mat, meta.data = meta, assay = "RNA")
 obj[["RNA"]]$data <- data_mat
 
