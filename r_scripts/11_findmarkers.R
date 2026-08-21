@@ -19,11 +19,7 @@ length(obj_list) <- 3
 obj_list <- map(files_in, 
                 readRDS)
 
-# Already joined layers in script 11
-# obj_list <- map(obj_list,
-#                 JoinLayers)
-
-res_choices <- c(1, 1.2, 1.4)
+res_choices <- c(1, 1, 1.2)
 
 names(obj_list) <- c("brain", "muscle", "sc")
 
