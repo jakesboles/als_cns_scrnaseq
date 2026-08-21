@@ -68,7 +68,26 @@ obj[["RNA"]]$data <- as(obj[["RNA"]]$data, "dgCMatrix")
 # Split by sample right before IntegrateLayers(), which needs per-sample
 # layers to integrate across -- 07_norm_pca.R saves this data already
 # joined into one matrix, so it isn't split until it's actually needed here.
+# A "Layers(obj, search = 'data')" warning ("No layers found matching
+# search pattern provided") and "only the first layer is used" messages
+# from IntegrateLayers() are expected here and harmless -- confirmed via
+# testing that they don't actually block a successful run; the crash
+# they were originally (wrongly) blamed for was the barcode-mangling bug
+# fixed above.
 obj[["RNA"]] <- split(obj[["RNA"]], f = obj$orig.ident)
+
+message2("Scaling data")
+
+# CCAIntegration's internal legacy-Assay CCA step needs real scale.data --
+# without it, it tries to generate one itself and produces a sparse
+# dgCMatrix, which the legacy Assay class's scale.data slot rejects
+# ("assignment of an object of class dgCMatrix is not valid for slot
+# 'scale.data' ... is(value, 'matrix') is not TRUE", since scale.data
+# there must be a dense base matrix). ScaleData() always returns a dense
+# matrix, so computing it explicitly here avoids that internal failure.
+# Defaults to scaling VariableFeatures(obj) only (already set above),
+# matching 07_norm_pca.R's ScaleData() call.
+obj <- ScaleData(obj)
 
 message2("Integrating samples using CCA")
 
