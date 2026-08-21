@@ -253,7 +253,7 @@ for (i in seq_along(res_tests)){
                y = sil_width)) +
     geom_quasirandom(aes(fill = cluster),
                      shape = 21,
-                     color = "black",
+                     # color = "black",
                      show.legend = F) +
     scale_y_continuous(limits = c(-1, 1)) +
     scale_fill_manual(values = pal) +
