@@ -1,40 +1,105 @@
-library(Seurat)
-library(scCustomize)
-library(tidyverse)
-library(patchwork)
-library(dittoSeq)
+suppressMessages({
+  library(Seurat)
+  library(scCustomize)
+  library(tidyverse)
+  library(patchwork)
+  library(dittoSeq)
+  library(BPCells)
+})
 
-proj_dir <- "/projects/b1169/boles/als_multitissue_scfrp/"
+setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
-data_in_dir <- paste0(proj_dir, "data/11_clustering")
-files_in <- list.files(data_in_dir,
-                       full.names = T)
+data_in_dir0 <- "data/09_integration/"
 
-plots_dir <- paste0(proj_dir, "plots/13_annotation/")
+clusters_in_dir0 <- "data/10_clustering/"
+
+tab_out_dir0 <- "tab_data/12_annotation1/"
+
+plots_dir0 <- "plots/12_annotation1/"
+
+combined_plot <- function(s, gene, res){
+  p1 <- FeaturePlot_scCustom(s,
+                             features = gene,
+                             reduction = "umap",
+                             raster = T,
+                             raster.dpi = c(900, 900),
+                             pt.size = 0.05)
+  p2 <- VlnPlot_scCustom(s,
+                         features = gene,
+                         group.by = paste0("res", res, "_clusters"),
+                         raster = T,
+                         raster.dpi = 900) + 
+    NoLegend()
+  
+  p <- p1 + p2 + 
+    plot_layout(nrow = 2,
+                heights = c(2, 1))
+  
+  ggsave(p,
+         filename = paste0(plots_dir, gene, ".png"),
+         units = "in", dpi = 300,
+         height = 9, width = 7)
+}
+
+# Annotating brain --------------------------------------------------------
+
+tissue <- "brain"
+
+data_in_dir <- paste0(data_in_dir0, tissue, "/")
+
+clusters_in_dir <- paste0(clusters_in_dir0, tissue, "/")
+
+tab_out_dir <- paste0(tab_out_dir0, tissue, "/")
+dir.create(tab_out_dir,
+           showWarnings = F,
+           recursive = T)
+
+plots_dir <- paste0(plots_dir0, tissue, "/")
 dir.create(plots_dir,
            showWarnings = F,
            recursive = T)
 
-obj_list <- list()
-length(obj_list) <- 3
+data_mat <- open_matrix_dir(paste0(data_in_dir, "bpcells_data"))
+meta <- readRDS(paste0(clusters_in_dir, "metadata.rds"))
+umap <- readRDS(paste0(clusters_in_dir, "harmony_umap.rds"))
 
-obj_list <- map(files_in, 
-                readRDS)
+obj <- CreateSeuratObject(counts = data_mat, meta.data = meta, assay = "RNA")
+obj[["RNA"]]$data <- data_mat
+obj[["umap"]] <- umap
 
-names(obj_list) <- c("brain", "muscle", "sc")
+resolution <- 1
 
-tab_in_dir <- paste0(proj_dir, "tab_data/12_findmarkers/")
-markers <- list.files(tab_in_dir, 
-                      full.names = T)[str_detect(list.files(tab_in_dir), "markers")]
-markers <- markers[str_detect(markers, "OLD", negate = T)]  
-markers <- map(markers, read.csv)
+DimPlot_scCustom(obj,
+                 reduction = "umap",
+                 group.by = paste0("res", resolution, "_clusters"))
+ggsave(filename = paste0(plots_dir, "cluster_dimplot.png"),
+       units = "in", dpi = 300,
+       height = 6, width = 7)
 
-names(markers) <- names(obj_list)
+markers <- read.csv(paste0("tab_data/11_findmarkers/", tissue, "/markers.csv"))
 
-Idents(obj_list[[1]]) <- "res1_clusters"
-Idents(obj_list[[2]]) <- "res1.2_clusters"
-Idents(obj_list[[3]]) <- "res1.4_clusters"
+top5 <- markers %>% 
+  filter(pct.1 > 0.3) %>% 
+  Extract_Top_Markers(num_features = 5,
+                      make_unique = T,
+                      named_vector = F)
 
+p <- dittoDotPlot(obj,
+             vars = top5,
+             group.by = paste0("res", resolution, "_clusters"))
+ggsave(p,
+       filename = paste0(plots_dir, "top5_dotplot.png"),
+       units = "in", dpi = 600,
+       height = 8, width = 20)
+
+for (i in c("C1QA", 'ITGAM', 'P2RY12', 'GFAP', 'AQP4', 'PDGFRA', 'DCN',
+            'CEMIP', 'RBFOX3', 'OLIG1', 'MOBP', 'PLP1', 'CLDN5', 'PODXL', 
+            'RGS5', 'ACTA2', 'NKG7', 'GAD1', 'SNAP25', 'CNP', 'OPALIN')){
+  
+  combined_plot(obj,
+                i,
+                resolution)
+}
 
 # Plotting etc for annotations --------------------------------------------
 
