@@ -1,0 +1,20 @@
+Oligodendrocyte,brain
+Astrocyte,brain
+Neuron,brain
+Immune,brain
+OPC,brain
+Mural,brain
+Muscle fiber,muscle
+Fibroblast,muscle
+Satellite cell,muscle
+Myeloid,muscle
+Lymphocyte,muscle
+Mural,muscle
+Neuron,muscle
+Astrocyte,sc
+Immune,sc
+Oligodendrocyte,sc
+OPC,sc
+Mural,sc
+Neuron,sc
+Ependymal,sc
