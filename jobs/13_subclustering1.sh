@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --account b1169
-#SBATCH --partition b1169
+#SBATCH --account b1042
+#SBATCH --partition genomics
 #SBATCH --job-name 13_subclustering1
 #SBATCH --array 1-20
 #SBATCH --nodes 1
