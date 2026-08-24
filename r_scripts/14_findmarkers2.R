@@ -150,6 +150,24 @@ markers <- FindAllMarkers(obj)
 write.csv(markers,
           file = paste0(tab_data_dir, "markers.csv"))
 
+# Top 5 marker genes per cluster -----------------------------------------
+
+message2("Making top 5 marker dot plot")
+
+top5 <- markers %>%
+  filter(pct.1 > 0.3) %>%
+  Extract_Top_Markers(num_features = 5,
+                      make_unique = T,
+                      named_vector = F)
+
+p <- dittoDotPlot(obj,
+                  vars = top5,
+                  group.by = resolution_col)
+ggsave(p,
+       filename = paste0(plots_dir, "top5_dotplot.png"),
+       units = "in", dpi = 600,
+       height = 8, width = 20)
+
 # Feature plots for canonical marker genes -----------------------------------
 
 message2("Making feature plots for canonical marker genes")
