@@ -158,8 +158,8 @@ for (gene in genes){
   p <- FeaturePlot_scCustom(obj,
                             features = gene,
                             reduction = "harmony_umap",
-                            raster = T,
-                            raster.dpi = c(900, 900),
+                            # raster = T,
+                            # raster.dpi = c(900, 900),
                             pt.size = 0.05)
   ggsave(p,
          filename = paste0(plots_dir, gene, ".png"),
