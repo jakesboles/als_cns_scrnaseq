@@ -91,8 +91,16 @@ annots <- Pull_Cluster_Annotation(
 
 obj <- Rename_Clusters(obj,
                        new_idents = annots$new_cluster_idents,
-                       new_ident_name = "cell_type",
+                       new_ident_name = "cell_type1",
                        overwrite = T)
+
+p <- DimPlot_scCustom(obj,
+                      group.by = "cell_type1",
+                      reduction = "harmony_umap")
+ggsave(p,
+       filename = paste0(plots_dir, tissue_file, "_round1_labels.png"),
+       units = "in", dpi = 300,
+       height = 6, width = 8)
 
 # Fold in each subset's round-2 annotation -----------------------------------
 # Defaults every cell to its round-1 label, then overwrites cells belonging
@@ -101,6 +109,25 @@ obj <- Rename_Clusters(obj,
 # round-1 label instead of going missing from the plot.
 
 message2("Folding in round-2 subcluster annotations")
+
+# LEFT OFF HERE
+cells <- list.dirs(paste0("data/13_subclustering1/", tissue_file),
+                   full.names = F,
+                   recursive = F)
+
+meta_list <- list()
+
+annotation_list <- list()
+
+for (i in seq_along(cell_types)) {
+  meta_list[[i]] <- readRDS(paste0("data/13_subclustering1/", tissue_file, "/", cells[i], "/metadata.rds"))
+  
+  annotation_list[[i]] <- Pull_Cluster_Annotation(
+    annotation = paste0("tab_data/14_findmarkers2/", tissue_file, "/", cells[i], "/annotations.csv")
+  )
+  
+}
+# TO HERE
 
 obj$cell_type_round2 <- obj$cell_type
 
