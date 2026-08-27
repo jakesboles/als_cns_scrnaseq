@@ -110,30 +110,13 @@ ggsave(p,
 
 message2("Folding in round-2 subcluster annotations")
 
-# LEFT OFF HERE
-cells <- list.dirs(paste0("data/13_subclustering1/", tissue_file),
-                   full.names = F,
-                   recursive = F)
-
-meta_list <- list()
-
-annotation_list <- list()
-
-for (i in seq_along(cell_types)) {
-  meta_list[[i]] <- readRDS(paste0("data/13_subclustering1/", tissue_file, "/", cells[i], "/metadata.rds"))
-  
-  annotation_list[[i]] <- Pull_Cluster_Annotation(
-    annotation = paste0("tab_data/14_findmarkers2/", tissue_file, "/", cells[i], "/annotations.csv")
-  )
-  
-}
-# TO HERE
-
-obj$cell_type_round2 <- obj$cell_type
+# obj$cell_type2 <- obj$cell_type1
 
 params <- read.csv("jobs/13_params.txt", header = F,
                    col.names = c("cell_type", "tissue_file"))
 cell_types <- params$cell_type[params$tissue_file == tissue_file]
+
+new_labels <- list()
 
 for (cell_type_target in cell_types){
   message2(paste0("  -- ", cell_type_target))
@@ -154,19 +137,26 @@ for (cell_type_target in cell_types){
   annot_csv <- read.csv(paste0("tab_data/14_findmarkers2/", tissue_file, "/",
                                cell_type_target, "/annotations.csv"))
 
-  new_labels <- annot_csv$cell_type[match(as.character(sub_meta[[sub_res_col]]),
+  new_labels[[cell_type_target]] <- annot_csv$cell_type[match(as.character(sub_meta[[sub_res_col]]),
                                           as.character(annot_csv$cluster))]
-  names(new_labels) <- rownames(sub_meta)
+  names(new_labels[[cell_type_target]]) <- rownames(sub_meta)
 
-  obj$cell_type_round2[names(new_labels)] <- new_labels
 }
+
+new_labels <- list_c(new_labels) %>% 
+  as.data.frame()
+
+colnames(new_labels) <- "cell_type2"
+
+obj <- AddMetaData(obj,
+                   new_labels)
 
 # Diagnostic DimPlot ------------------------------------------------------
 
 message2("Making DimPlot of round-2 labels")
 
 p <- DimPlot_scCustom(obj,
-                      group.by = "cell_type_round2",
+                      group.by = "cell_type2",
                       reduction = "harmony_umap")
 ggsave(p,
        filename = paste0(plots_dir, tissue_file, "_new_labels.png"),
