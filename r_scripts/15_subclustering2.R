@@ -418,6 +418,11 @@ ggsave(p,
        units = "in", dpi = 300,
        height = 6, width = 7)
 
+message2("Writing annotation template")
+
+Create_Cluster_Annotation_File(file_path = group_tab_data_dir,
+                               file_name = "annotations")
+
 # Save metadata, integrated embedding, normalized expression, and UMAP -----
 
 message2("Saving metadata, count matrix, Harmony embedding, and UMAP")
