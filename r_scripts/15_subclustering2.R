@@ -11,7 +11,11 @@
 #    with the highest graph modularity, runs FindAllMarkers(), and saves
 #    markers/a top-5 dot plot/a cluster DimPlot plus the re-processed
 #    object (metadata, normalized expression, Harmony embedding, UMAP)
-#    to <data|plots|tab_data>/15_subclustering2/<tissue>/<group>/.
+#    to <data|plots|tab_data>/15_subclustering2/<tissue>/<group>/. Also
+#    saves a DimPlot of the input cell_type2 labels on the new embedding,
+#    before clustering -- most useful for the multi-cell-type groups, to
+#    see whether the cell types that went in land in separate regions or
+#    intermix, without having to go dig through earlier scripts' plots.
 #
 # Runs as a SLURM job array (see jobs/15_subclustering2.sh), one task per
 # entry in subclustering_targets below -- some tissues get more than one
@@ -307,6 +311,24 @@ working_obj <- working_obj %>%
           n_neighbors = 15L,
           reduction.name = "harmony_umap",
           return.model = T)
+
+# DimPlot of the cell_type2 labels that went into this group -----------------
+# Useful on its own for single-cell-type targets, but especially for the
+# multi-cell-type groups -- shows whether the input labels form distinct
+# regions on the new embedding (a sanity check before trusting whatever
+# the fresh clustering below finds) or fully intermix. Saved before
+# clustering so it's available even if a cell type gets split up by the
+# new clusters, without having to dig back through 12/13/14's plots.
+
+message2("Making DimPlot of input cell_type2 labels")
+
+p <- DimPlot_scCustom(working_obj,
+                      group.by = "cell_type2",
+                      reduction = "harmony_umap")
+ggsave(p,
+       filename = paste0(group_plots_dir, "cell_type2_dimplot.png"),
+       units = "in", dpi = 300,
+       height = 6, width = 7)
 
 # Cluster at several resolutions, scoring each by graph modularity ----------
 # Same resolution list as 13_subclustering1.R.
