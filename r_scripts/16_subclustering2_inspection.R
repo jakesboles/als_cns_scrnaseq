@@ -84,7 +84,7 @@ combined_plot <- function(gene){
 
 gene_lists <- list(
   c("SLC17A7", "SLC17A6", "CUX2", "CBLN2", "LAMP5", "FREM3", "RORB", "C1QL2", "PRSS12", "FOXP2", "TLE4", "SYT6", "NR4A2", "ETV1", "RSPO2", "PCP4",
-    "FEZF2", "BCL11B", "POU3F1", "CRYM", "PCP4", "TSHZ2", "NEFH", "VAT1L"),
+    "FEZF2", "BCL11B", "POU3F1", "CRYM", "PCP4", "TSHZ2", "NEFH", "VAT1L", "THEMIS"),
   c("NPY", "SST", "PVALB", "GAD1", "SLC17A7", "VIP", "LAMP5", "KIT", "CXCL14", "CCK", "RELN", "NEFH"),
   c("CD163", "VCAN", "MRC1", "CCR2", "MOBP", "GFAP", "MKI67", "S100A8", "LYVE1", "CD14", "CSF1R"),
   c("CD3E", "CD8A", "NKG7", "TRAC", "FCGR3A", "ITGAM", "VCAN", "S100A8", "CSF1R", "CD163", "P2RY12"),
@@ -106,10 +106,14 @@ for (j in gene_lists[[i]]) {
 # Inspecting marker genes -------------------------------------------------
 
 markers %>% 
-  filter(cluster == 6 & 
+  filter(cluster == 12 & 
            pct.1 > 0.3) %>% 
   arrange(desc(avg_log2FC)) %>% 
   head(30)
+
+markers %>% 
+  filter(gene == "SV2C") %>% 
+  arrange(desc(avg_log2FC))
 
 # Updating annotation sheet -----------------------------------------------
 
@@ -119,11 +123,15 @@ n_clusters <- length(unique(Idents(obj)))
 
 annotations %>% 
   filter(cluster > 0 & cluster <= n_clusters) %>%
-  mutate(cell_type = case_when(cluster %in% c(17, 18) ~ "Remove",
-                               cluster %in% c(3, 2, 6, 13, 15) ~ "Type II MF",
-                               cluster %in% c(4, 7, 8, 9) ~ "Type I MF",
-                               cluster %in% c(1, 5, 10, 11, 12, 14) ~ "Denervated MF",
-                               cluster %in% c(16) ~ "Proliferating MF")) %>%
+  mutate(cell_type = case_when(cluster %in% c(1, 2, 3, 5, 6, 7, 9, 12, 15, 17, 20, 23) ~ "L2-3 EN",
+                               cluster %in% c(24, 25, 8) ~ "Remove",
+                               cluster %in% c(13, 19) ~ "L6 IT EN",
+                               cluster %in% c(10, 14) ~ "L4 EN",
+                               cluster %in% c(4, 11) ~ "L5 IT EN",
+                               cluster %in% c(16) ~ "L6 CT EN",
+                               cluster %in% c(18) ~ "L6b EN",
+                               cluster %in% c(21) ~ "L5-6 NP EN",
+                               cluster %in% c(22) ~ "L5 ET EN")) %>%
   write.csv(file = paste0(tab_dir, "annotations.csv"),
             row.names = F,
             quote = F)
@@ -179,3 +187,16 @@ table(obj$orig.ident,
 
 Stacked_VlnPlot(obj,
                 features = c("nCount_RNA", "nFeature_RNA", "percent_mito"))
+
+query <- FindMarkers(obj,
+                     ident.1 = 8, 
+                     ident.2 = 22)
+
+query %>% 
+  filter(pct.1 > 0.3) %>% 
+  arrange(desc(avg_log2FC)) %>%
+  head(30)
+
+VlnPlot_scCustom(obj,
+                 features = "CRYM",
+                 split.by = "group")
