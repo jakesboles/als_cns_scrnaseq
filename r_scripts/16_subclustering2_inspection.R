@@ -30,7 +30,7 @@ subclustering_targets <- list(
 
 # Assemble object, load marker genes --------------------------------------
 
-i <- 6
+i <- 1
 
 tissue <- subclustering_targets[[i]]$tissue
 cell <- paste(subclustering_targets[[i]]$cell_types, collapse = "_")
@@ -83,12 +83,13 @@ combined_plot <- function(gene){
 }
 
 gene_lists <- list(
-  c(),
+  c("SLC17A7", "SLC17A6", "CUX2", "CBLN2", "LAMP5", "FREM3", "RORB", "C1QL2", "PRSS12", "FOXP2", "TLE4", "SYT6", "NR4A2", "ETV1", "RSPO2", "PCP4",
+    "FEZF2", "BCL11B", "POU3F1", "CRYM", "PCP4", "TSHZ2", "NEFH", "VAT1L"),
   c("NPY", "SST", "PVALB", "GAD1", "SLC17A7", "VIP", "LAMP5", "KIT", "CXCL14", "CCK", "RELN", "NEFH"),
   c("CD163", "VCAN", "MRC1", "CCR2", "MOBP", "GFAP", "MKI67", "S100A8", "LYVE1", "CD14", "CSF1R"),
   c("CD3E", "CD8A", "NKG7", "TRAC", "FCGR3A", "ITGAM", "VCAN", "S100A8", "CSF1R", "CD163", "P2RY12"),
   c("PODXL", "CLDN5", "RGS5", "ACTA2", "PECAM1", "PDGFRB", "VWF", "CSPG4", "MCAM"),
-  c("MYH7", "TNNT1", "TNNI1", "MYL2", "ATP2A2", "MYH2", "MYH1", "TNNT3", "TNNI2", "MYL1", "ATP2A1"),
+  c("MYH7", "TNNT1", "TNNI1", "MYL2", "ATP2A2", "MYH2", "MYH1", "TNNT3", "TNNI2", "MYL1", "ATP2A1", "CHRNA1", "CHRNG", "MYOG"),
   c("PODXL", "CLDN5", "RGS5", "ACTA2", "PECAM1", "PDGFRB", "VWF", "CSPG4", "MCAM", "MYH11"),
   c("CD163", "CD300E", "LYZ", "LYVE1", "ITGAX", "S100A8", "LTF", "TREM2", "VCAN", "CD14", "FCGR3A", "ITGAM", "MS4A1", "TRAC"),
   c("CD3E", "CD8A", "NKG7", "TRAC", "FCGR3A", "ITGAM", "VCAN", "S100A8", "CSF1R", "CD163", "MS4A1", "NCAM1"),
@@ -118,13 +119,63 @@ n_clusters <- length(unique(Idents(obj)))
 
 annotations %>% 
   filter(cluster > 0 & cluster <= n_clusters) %>%
-  mutate(cell_type = case_when(cluster %in% c(18) ~ "Remove")) %>%
+  mutate(cell_type = case_when(cluster %in% c(17, 18) ~ "Remove",
+                               cluster %in% c(3, 2, 6, 13, 15) ~ "Type II MF",
+                               cluster %in% c(4, 7, 8, 9) ~ "Type I MF",
+                               cluster %in% c(1, 5, 10, 11, 12, 14) ~ "Denervated MF",
+                               cluster %in% c(16) ~ "Proliferating MF")) %>%
   write.csv(file = paste0(tab_dir, "annotations.csv"),
             row.names = F,
             quote = F)
 
 
+# Extra stuff for trickier subtypes ---------------------------------------
 
 dittoBarPlot(obj,
-             var = "group",
+             var = "DF.unadj",
              group.by = paste0("res", res, "_clusters"))
+
+dittoDotPlot(obj,
+             vars = c("MYH7", "TNNT1", "TNNI1", "MYL2", "ATP2A2", "MYH2", "MYH1", "TNNT3", "TNNI2", "MYL1", "ATP2A1"),
+             group.by = paste0("res", res, "_clusters"))
+ggsave(filename = paste0(plots_dir, "fiber_typing_genes_dotplot.png"),
+       units = "in", dpi = 600,
+       height = 8, width = 8)
+
+dittoDotPlot(obj,
+             vars = c("CHRNA1", "CHRNG", "CHRND", "MYOG", "MYF6", "NCAM1", "FBXO32", "TRIM63", "GDF15"),
+             group.by = paste0("res", res, "_clusters"))
+ggsave(filename = paste0(plots_dir, "fiber_health_genes_dotplot.png"),
+       units = "in", dpi = 600,
+       height = 8, width = 8)
+
+obj@meta.data <- obj@meta.data %>% 
+  mutate(mf = case_when(res1_clusters %in% c(2, 13, 15, 6) ~ "Type I",
+                        res1_clusters %in% c(3, 4, 7, 8) ~ "Type II",
+                        res1_clusters %in% c(5, 10, 11, 14, 12, 9, 1) ~ "Denervated",
+                        res1_clusters %in% c(16) ~ "Proliferating",
+                        res1_clusters %in% c(17, 18) ~ "Remove"))
+
+obj@meta.data <- obj@meta.data %>% 
+  mutate(mf = case_when(res1_clusters %in% c(17, 18) ~ "Remove",
+                        res1_clusters %in% c(3, 2, 6, 13, 15) ~ "fast",
+                        res1_clusters %in% c(4, 7, 8, 9) ~ "slow",
+                        res1_clusters %in% c(16) ~ "proliferating",
+                        res1_clusters %in% c(1, 5, 10, 11, 12, 14) ~ "injured"))
+
+DimPlot_scCustom(obj,
+                 group.by = "mf")
+
+dittoDotPlot(obj,
+             vars = c("CUX2", "CBLN2", "LAMP5", "FREM3", "RORB", "C1QL2", "PRSS12", "FOXP2", "TLE4", "SYT6", "NR4A2", "ETV1", "RSPO2", "PCP4",
+                      "FEZF2", "BCL11B", "POU3F1", "CRYM", "TSHZ2", "NEFH", "VAT1L"),
+             group.by = paste0("res", res, "_clusters"))
+ggsave(filename = paste0(plots_dir, "en_subtype_genes_dotplot.png"),
+       units = "in", dpi = 600,
+       height = 8, width = 12)
+
+table(obj$orig.ident,
+      Idents(obj))
+
+Stacked_VlnPlot(obj,
+                features = c("nCount_RNA", "nFeature_RNA", "percent_mito"))
