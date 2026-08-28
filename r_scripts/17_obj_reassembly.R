@@ -142,6 +142,14 @@ obj <- Rename_Clusters(obj,
                        new_ident_name = "cell_type1",
                        overwrite = T)
 
+p <- DimPlot_scCustom(obj,
+                      group.by = "cell_type2",
+                      reduction = "harmony_umap")
+ggsave(p,
+       filename = paste0(plots_dir, tissue_file, "_cell_type1_dimplot_pre-integration.png"),
+       units = "in", dpi = 300,
+       height = 6, width = 8)
+
 message2("Folding in round-2 subcluster annotations")
 
 params <- read.csv("jobs/13_params.txt", header = F,
@@ -172,6 +180,17 @@ new_labels <- list_c(new_labels) %>%
 colnames(new_labels) <- "cell_type2"
 
 obj <- AddMetaData(obj, new_labels)
+
+p <- DimPlot_scCustom(obj,
+                      group.by = "cell_type2",
+                      reduction = "harmony_umap")
+ggsave(p,
+       filename = paste0(plots_dir, tissue_file, "_cell_type2_dimplot_pre-integration.png"),
+       units = "in", dpi = 300,
+       height = 6, width = 8)
+
+# obj <- subset(obj,
+#               cell_type2 != "Remove")
 
 # Fold in round-3 subcluster annotations -------------------------------
 # Defaults every cell to its round-2 label -- covers cell types that were
@@ -210,6 +229,17 @@ for (target in targets_this_tissue){
 
   obj$cell_type3[names(new_round3)] <- new_round3
 }
+
+# Accidentally left a space after a remove somewhere, remove it here
+obj$cell_type3 <- str_replace_all(obj$cell_type3, "Remove ", "Remove")
+
+p <- DimPlot_scCustom(obj,
+                      group.by = "cell_type3",
+                      reduction = "harmony_umap")
+ggsave(p,
+       filename = paste0(plots_dir, tissue_file, "_cell_type3_dimplot_pre-integration.png"),
+       units = "in", dpi = 300,
+       height = 6, width = 10)
 
 # Remove cells flagged for exclusion -----------------------------------
 
@@ -287,9 +317,9 @@ p <- DimPlot_scCustom(working_obj,
                       group.by = "cell_type3",
                       reduction = "harmony_umap")
 ggsave(p,
-       filename = paste0(plots_dir, tissue_file, "_cell_type3_dimplot.png"),
+       filename = paste0(plots_dir, tissue_file, "_cell_type3_dimplot_post-integration.png"),
        units = "in", dpi = 300,
-       height = 6, width = 8)
+       height = 6, width = 10)
 
 # Save the cleaned, integrated, fully annotated object -----------------
 

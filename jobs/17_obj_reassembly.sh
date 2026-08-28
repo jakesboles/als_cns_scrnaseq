@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --account b1042
-#SBATCH --partition genomics
+#SBATCH --account b1169
+#SBATCH --partition b1169
 #SBATCH --job-name 17_obj_reassembly
 #SBATCH --array 1-3
 #SBATCH --nodes 1
