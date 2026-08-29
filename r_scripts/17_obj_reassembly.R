@@ -143,7 +143,7 @@ obj <- Rename_Clusters(obj,
                        overwrite = T)
 
 p <- DimPlot_scCustom(obj,
-                      group.by = "cell_type2",
+                      group.by = "cell_type1",
                       reduction = "harmony_umap")
 ggsave(p,
        filename = paste0(plots_dir, tissue_file, "_cell_type1_dimplot_pre-integration.png"),
