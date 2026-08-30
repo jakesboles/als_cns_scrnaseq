@@ -45,11 +45,14 @@
 # - RunUMAP() switched from the graph-based nn.name = "RNA.nn" approach
 #   (matching 10/13/15/17) to running directly off the "harmony"
 #   reduction, per the user, after the graph-based UMAP didn't look
-#   right. That switch caused a segfault on the brain_sc target (500K+
-#   cells) inside RunUMAP()'s default spectral initialization
-#   (RSpectra::eigs_sym) -- see the comment above that RunUMAP() call for
-#   the fix (`uwot.init = "pca"`) and the accompanying `n_neighbors` ->
-#   `n.neighbors` typo fix.
+#   right. That switch caused a segfault on the brain_sc target inside
+#   RunUMAP()'s default spectral initialization (RSpectra::eigs_sym) --
+#   NOT explained by brain_sc's cell count, since the larger all_tissues
+#   target runs the identical call without issue. See the comment above
+#   that RunUMAP() call for the current (still not fully confirmed)
+#   hypothesis, the `uwot.init = "pca"` fix, a duplicate/non-finite
+#   diagnostic check added alongside it, and the accompanying
+#   `n_neighbors` -> `n.neighbors` typo fix.
 
 suppressMessages({
   library(Seurat)
@@ -174,14 +177,36 @@ obj[["RNA"]] <- JoinLayers(obj[["RNA"]])
 #   the typo is fixed.
 # - RunUMAP()'s default initialization (`uwot.init = "spectral"`) builds
 #   the graph Laplacian and eigendecomposes it via RSpectra, which
-#   segfaults on this combined-tissue scale (500K+ cells) -- a known
-#   uwot/RSpectra failure mode on large/sparse graphs (satijalab/seurat
-#   #2256, #2259; RSpectra's ARPACK-based solver can crash outright
-#   rather than error cleanly). `uwot.init = "pca"` initializes from the
-#   PCA/Harmony embedding directly instead, skipping RSpectra entirely.
-# This is an informed hypothesis based on the stack trace, not verified
-# by actually running it (no R/Seurat runtime in this dev container) --
-# rerun and see if the segfault is gone.
+#   segfaulted on the brain_sc target. An earlier version of this comment
+#   attributed this to brain_sc's cell count (500K+), but the user
+#   pointed out that all_tissues -- a *larger* target running the
+#   identical RunUMAP() call -- completed without issue, which rules that
+#   out as the mechanism. Cell count alone isn't it.
+#   RSpectra's ARPACK-based eigensolver is also known to crash outright
+#   (segfault, not a clean R error) on numerically degenerate input --
+#   e.g. many exactly-duplicated points in the embedding -- rather than
+#   just large ones. Circumstantial support for that specific to
+#   brain_sc: Harmony's own k-means step logged 10x "Quick-TRANSfer stage
+#   steps exceeded maximum" warnings for brain_sc (visible in the pasted
+#   log), a classic symptom of many tied/duplicate points during k-means.
+#   That's a real hypothesis, not a confirmed diagnosis -- the duplicate/
+#   non-finite check logged just below exists to actually find out,
+#   instead of guessing again.
+# `uwot.init = "pca"` initializes UMAP from the embedding directly
+# instead of eigendecomposing the graph Laplacian, avoiding RSpectra
+# regardless of which hypothesis above is right -- kept as the fix since
+# it should hold either way, but flagged here as not fully explained.
+# This is still an informed hypothesis, not verified by actually running
+# it (no R/Seurat runtime in this dev container).
+
+message2("Checking Harmony embedding for duplicate/non-finite values")
+
+harmony_emb <- as.data.frame(Embeddings(obj, reduction = "harmony")[, 1:20])
+n_dup <- sum(duplicated(harmony_emb))
+n_nonfinite <- sum(!is.finite(as.matrix(harmony_emb)))
+message2(paste0(nrow(harmony_emb), " cells, ", n_dup,
+                " duplicated embedding rows, ", n_nonfinite,
+                " non-finite values"))
 
 message2("Computing UMAP directly on the Harmony embedding")
 
