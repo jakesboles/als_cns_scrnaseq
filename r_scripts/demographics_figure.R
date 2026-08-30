@@ -101,6 +101,9 @@ p_group + p_c9 + p_age + p_duration +
   plot_layout(ncol = 1, widths = c(1.6, rep(1, 8))) +
   plot_annotation(title = "ALS Cohort Donor Demographics")
 
-ggsave("plots/tmp/demographics_heatmap.png",
+results_dir <- "results/demographics_figure/"
+dir.create(results_dir, showWarnings = F, recursive = T)
+
+ggsave(paste0(results_dir, "demographics_heatmap.png"),
        units = "in", dpi = 600,
        height = 5, width = 13)

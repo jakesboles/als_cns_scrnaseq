@@ -22,8 +22,8 @@ message2 <- function(text){
 
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
-plots_dir <- "plots/08_pca_evaluation/"
-dir.create(plots_dir, showWarnings = F,
+results_dir <- "results/08_pca_evaluation/"
+dir.create(results_dir, showWarnings = F,
            recursive = T)
 
 data_in_dir <- "data/07_norm_pca/"
@@ -79,7 +79,7 @@ for (i in seq_along(tissues$file)){
   p <- ElbowPlot(obj,
                 ndims = 100)
   ggsave(p,
-         filename = paste0(plots_dir, tissue, "_elbow_plot.png"),
+         filename = paste0(results_dir, tissue, "_elbow_plot.png"),
          units = "in", dpi = 600,
          height = 6, width = 6,
          bg = "white")
@@ -89,7 +89,7 @@ for (i in seq_along(tissues$file)){
   obj <- ScaleData(obj)
 
   Iterate_PC_Loading_Plots(obj,
-                           file_path = plots_dir,
+                           file_path = results_dir,
                            file_name = paste0(tissue, "_pca_loadings"))
 
   pca_plot2 <- function(dims){
@@ -139,35 +139,35 @@ for (i in seq_along(tissues$file)){
   Idents(obj) <- "tissue"
   p <- pca_grid("tissue")
   ggsave(p,
-         filename = paste0(plots_dir, tissue, "_pca_dimplot_tissue.png"),
+         filename = paste0(results_dir, tissue, "_pca_dimplot_tissue.png"),
          units = "in", dpi = 600,
          height = 10, width = 12)
 
   Idents(obj) <- "id"
   p <- pca_grid("id")
   ggsave(p,
-         filename = paste0(plots_dir, tissue, "_pca_dimplot_id.png"),
+         filename = paste0(results_dir, tissue, "_pca_dimplot_id.png"),
          units = "in", dpi = 600,
          height = 10, width = 15)
 
   Idents(obj) <- "Batch"
   p <- pca_grid("Batch")
   ggsave(p,
-         filename = paste0(plots_dir, tissue, "_pca_dimplot_batch.png"),
+         filename = paste0(results_dir, tissue, "_pca_dimplot_batch.png"),
          units = "in", dpi = 600,
          height = 10, width = 12)
 
   Idents(obj) <- "Group"
   p <- pca_grid("Group")
   ggsave(p,
-         filename = paste0(plots_dir, tissue, "_pca_dimplot_group.png"),
+         filename = paste0(results_dir, tissue, "_pca_dimplot_group.png"),
          units = "in", dpi = 600,
          height = 10, width = 12)
 
   Idents(obj) <- "site"
   p <- pca_grid("site")
   ggsave(p,
-         filename = paste0(plots_dir, tissue, "_pca_dimplot_site.png"),
+         filename = paste0(results_dir, tissue, "_pca_dimplot_site.png"),
          units = "in", dpi = 600,
          height = 10, width = 12)
   
@@ -185,7 +185,7 @@ for (i in seq_along(tissues$file)){
   #   theme_bw()
   # 
   # ggsave(p,
-  #        filename = paste0(plots_dir, tissue, "_jackstraw.png"),
+  #        filename = paste0(results_dir, tissue, "_jackstraw.png"),
   #        units = "in", dpi = 600,
   #        height = 5, width = 8)
   # 
@@ -233,7 +233,7 @@ for (i in seq_along(tissues$file)){
                    group.by = "tissue",
                    colors_use = JCO_Four())
   ggsave(p,
-         filename = paste0(plots_dir, tissue, "_umap_dimplot_tissue.png"),
+         filename = paste0(results_dir, tissue, "_umap_dimplot_tissue.png"),
          units = "in", dpi = 600,
          height = 5, width = 6)
 
@@ -243,7 +243,7 @@ for (i in seq_along(tissues$file)){
                    colors_use = DiscretePalette_scCustomize(6,
                                                             palette = "ditto_seq"))
   ggsave(p,
-         filename = paste0(plots_dir, tissue, "_umap_dimplot_batch.png"),
+         filename = paste0(results_dir, tissue, "_umap_dimplot_batch.png"),
          units = "in", dpi = 600,
          height = 5, width = 6)
 
@@ -252,7 +252,7 @@ for (i in seq_along(tissues$file)){
                    group.by = "group",
                    colors_use = JCO_Four())
   ggsave(p,
-         filename = paste0(plots_dir, tissue, "_umap_dimplot_group.png"),
+         filename = paste0(results_dir, tissue, "_umap_dimplot_group.png"),
          units = "in", dpi = 600,
          height = 5, width = 6)
 
@@ -260,7 +260,7 @@ for (i in seq_along(tissues$file)){
                    group.by = "id",
                    reduction = "umap")
   ggsave(p,
-         filename = paste0(plots_dir, tissue, "_umap_dimplot_id.png"),
+         filename = paste0(results_dir, tissue, "_umap_dimplot_id.png"),
          units = "in", dpi = 600,
          height = 5, width = 8)
 
@@ -269,7 +269,7 @@ for (i in seq_along(tissues$file)){
                    reduction = "umap",
                    colors_use = JCO_Four())
   ggsave(p,
-         filename = paste0(plots_dir, tissue, "_umap_dimplot_site.png"),
+         filename = paste0(results_dir, tissue, "_umap_dimplot_site.png"),
          units = "in", dpi = 600,
          height = 5, width = 8)
 }

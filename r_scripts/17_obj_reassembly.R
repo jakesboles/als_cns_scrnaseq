@@ -5,7 +5,7 @@
 #
 # Per task:
 # 1. Rebuilds the full tissue object and folds in cell_type1 (round 1,
-#    tab_data/12_annotation1/) and cell_type2 (round 2,
+#    results/12_annotation1/) and cell_type2 (round 2,
 #    14_findmarkers2.R's per-cell-type annotations.csv) -- identical to
 #    15_subclustering2.R's own folding logic (the "older 15_annotation2.R"
 #    approach the user pointed back to), reused here rather than
@@ -113,8 +113,8 @@ message2(paste0("Processing ", tissue_title, " (task ", task_id, "/",
 data_dir <- paste0("data/17_obj_reassembly/", tissue_file, "/")
 dir.create(data_dir, showWarnings = F, recursive = T)
 
-plots_dir <- paste0("plots/17_obj_reassembly/", tissue_file, "/")
-dir.create(plots_dir, showWarnings = F, recursive = T)
+results_dir <- paste0("results/17_obj_reassembly/", tissue_file, "/")
+dir.create(results_dir, showWarnings = F, recursive = T)
 
 # Load the full tissue object and fold in round-1/round-2 annotations -------
 # Identical to 15_subclustering2.R's own folding logic.
@@ -134,7 +134,7 @@ message2("Applying round-1 cluster annotations")
 Idents(obj) <- resolution_col
 
 annots <- Pull_Cluster_Annotation(
-  annotation = paste0("tab_data/12_annotation1/", tissue_file, "_annotations.csv")
+  annotation = paste0("results/12_annotation1/", tissue_file, "_annotations.csv")
 )
 
 obj <- Rename_Clusters(obj,
@@ -146,7 +146,7 @@ p <- DimPlot_scCustom(obj,
                       group.by = "cell_type1",
                       reduction = "harmony_umap")
 ggsave(p,
-       filename = paste0(plots_dir, tissue_file, "_cell_type1_dimplot_pre-integration.png"),
+       filename = paste0(results_dir, tissue_file, "_cell_type1_dimplot_pre-integration.png"),
        units = "in", dpi = 300,
        height = 6, width = 8)
 
@@ -162,12 +162,12 @@ for (cell_type_target in cell_types){
   sub_meta <- readRDS(paste0("data/13_subclustering1/", tissue_file, "/",
                              cell_type_target, "/metadata.rds"))
 
-  modularity_df <- read.csv(paste0("tab_data/13_subclustering1/", tissue_file, "/",
+  modularity_df <- read.csv(paste0("results/13_subclustering1/", tissue_file, "/",
                                    cell_type_target, "/graph_modularity.csv"))
   best_res <- modularity_df$resolution[which.max(modularity_df$modularity)]
   sub_res_col <- paste0("res", best_res, "_clusters")
 
-  annot_csv <- read.csv(paste0("tab_data/14_findmarkers2/", tissue_file, "/",
+  annot_csv <- read.csv(paste0("results/14_findmarkers2/", tissue_file, "/",
                                cell_type_target, "/annotations.csv"))
 
   new_labels[[cell_type_target]] <- annot_csv$cell_type[match(as.character(sub_meta[[sub_res_col]]),
@@ -185,7 +185,7 @@ p <- DimPlot_scCustom(obj,
                       group.by = "cell_type2",
                       reduction = "harmony_umap")
 ggsave(p,
-       filename = paste0(plots_dir, tissue_file, "_cell_type2_dimplot_pre-integration.png"),
+       filename = paste0(results_dir, tissue_file, "_cell_type2_dimplot_pre-integration.png"),
        units = "in", dpi = 300,
        height = 6, width = 8)
 
@@ -210,15 +210,15 @@ for (target in targets_this_tissue){
   message2(paste0("  -- ", group_label))
 
   group_dir <- paste0("data/15_subclustering2/", tissue_file, "/", group_label, "/")
-  group_tab_dir <- paste0("tab_data/15_subclustering2/", tissue_file, "/", group_label, "/")
+  group_results_dir <- paste0("results/15_subclustering2/", tissue_file, "/", group_label, "/")
 
   sub_meta <- readRDS(paste0(group_dir, "metadata.rds"))
 
-  modularity_df <- read.csv(paste0(group_tab_dir, "graph_modularity.csv"))
+  modularity_df <- read.csv(paste0(group_results_dir, "graph_modularity.csv"))
   best_res <- modularity_df$resolution[which.max(modularity_df$modularity)]
   res_col <- paste0("res", best_res, "_clusters")
 
-  annot_csv <- read.csv(paste0(group_tab_dir, "annotations.csv"))
+  annot_csv <- read.csv(paste0(group_results_dir, "annotations.csv"))
 
   new_round3 <- annot_csv$cell_type[match(as.character(sub_meta[[res_col]]),
                                           as.character(annot_csv$cluster))]
@@ -237,7 +237,7 @@ p <- DimPlot_scCustom(obj,
                       group.by = "cell_type3",
                       reduction = "harmony_umap")
 ggsave(p,
-       filename = paste0(plots_dir, tissue_file, "_cell_type3_dimplot_pre-integration.png"),
+       filename = paste0(results_dir, tissue_file, "_cell_type3_dimplot_pre-integration.png"),
        units = "in", dpi = 300,
        height = 6, width = 10)
 
@@ -332,7 +332,7 @@ p <- DimPlot_scCustom(working_obj,
                       group.by = "cell_type3",
                       reduction = "harmony_umap")
 ggsave(p,
-       filename = paste0(plots_dir, tissue_file, "_cell_type3_dimplot_post-integration.png"),
+       filename = paste0(results_dir, tissue_file, "_cell_type3_dimplot_post-integration.png"),
        units = "in", dpi = 300,
        height = 6, width = 10)
 

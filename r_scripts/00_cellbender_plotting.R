@@ -12,13 +12,8 @@ setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
 cellbender_outs <- "/projects/b1042/Gate_Lab/boles/als_multitissue/CellbenderOutput/" 
 
-plots_dir <- "plots/00_cellbender/"
-dir.create(plots_dir, 
-           showWarnings = F,
-           recursive = T)
-
-csv_dir <- "tab_data/00_cellbender/"
-dir.create(csv_dir,
+results_dir <- "results/00_cellbender/"
+dir.create(results_dir,
            showWarnings = F,
            recursive = T)
 
@@ -63,7 +58,7 @@ idx <- str_detect(metrics$sample, "cellbender",
 
 metrics <- metrics[idx, ]
 
-meta <- read.csv("/projects/b1169/boles/als_multitissue_scfrp/tab_data/metadata.csv")
+meta <- read.csv("tab_data/metadata.csv")
 colnames(meta) <- c("sample", "tissue", "pool", "dummy_code", "barcode", "index", "group")
 
 meta <- meta %>%
@@ -92,7 +87,7 @@ metrics <- metrics %>%
                                     "Muscle", "Hypothalamus")))
 
 write.csv(metrics,
-          file = paste0(csv_dir, "cellbender_metrics.csv"),
+          file = paste0(results_dir, "cellbender_metrics.csv"),
           row.names = F,
           quote = F)
 

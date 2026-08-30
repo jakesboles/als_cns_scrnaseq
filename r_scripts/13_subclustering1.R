@@ -109,13 +109,9 @@ data_dir <- paste0("data/13_subclustering1/", tissue_file, "/",
                    cell_type_target, "/")
 dir.create(data_dir, showWarnings = F, recursive = T)
 
-plots_dir <- paste0("plots/13_subclustering1/", tissue_file, "/",
-                    cell_type_target, "/")
-dir.create(plots_dir, showWarnings = F, recursive = T)
-
-tab_data_dir <- paste0("tab_data/13_subclustering1/", tissue_file, "/",
-                       cell_type_target, "/")
-dir.create(tab_data_dir, showWarnings = F, recursive = T)
+results_dir <- paste0("results/13_subclustering1/", tissue_file, "/",
+                      cell_type_target, "/")
+dir.create(results_dir, showWarnings = F, recursive = T)
 
 # Load the object used in 12_annotation1.R -----------------------------------
 
@@ -134,7 +130,7 @@ message2("Applying cluster annotations")
 Idents(obj) <- resolution_col
 
 annots <- Pull_Cluster_Annotation(
-  annotation = paste0("tab_data/12_annotation1/", tissue_file, "_annotations.csv")
+  annotation = paste0("results/12_annotation1/", tissue_file, "_annotations.csv")
 )
 
 obj <- Rename_Clusters(obj,
@@ -251,7 +247,7 @@ for (i in seq_along(res_tests)){
                         label = F,
                         reduction = "harmony_umap")
   ggsave(p,
-         filename = paste0(plots_dir, "res", res, ".png"),
+         filename = paste0(results_dir, "res", res, ".png"),
          units = "in", dpi = 600,
          height = 5, width = 6)
 
@@ -264,7 +260,7 @@ message2("Saving graph modularity table and plot")
 modularity_df <- data.frame(resolution = res_tests, modularity = modularity_vec)
 
 write.csv(modularity_df,
-          file = paste0(tab_data_dir, "graph_modularity.csv"),
+          file = paste0(results_dir, "graph_modularity.csv"),
           row.names = F)
 
 p <- ggplot(modularity_df, aes(x = resolution, y = modularity)) +
@@ -273,7 +269,7 @@ p <- ggplot(modularity_df, aes(x = resolution, y = modularity)) +
   theme_bw() +
   theme(axis.text = element_text(color = "black"))
 ggsave(p,
-       filename = paste0(plots_dir, "graph_modularity.png"),
+       filename = paste0(results_dir, "graph_modularity.png"),
        units = "in", dpi = 300,
        height = 4, width = 6)
 

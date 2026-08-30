@@ -125,16 +125,12 @@ message2(paste0("Processing ", tissue_title, " (task ", task_id, "/",
 
 data_in_dir <- paste0("data/09_integration/", tissue_file, "/")
 
-plots_dir <- paste0("plots/10_clustering/", tissue_file, "/")
-dir.create(plots_dir, showWarnings = F,
+results_dir <- paste0("results/10_clustering/", tissue_file, "/")
+dir.create(results_dir, showWarnings = F,
            recursive = T)
 
 data_out_dir <- paste0("data/10_clustering/", tissue_file, "/")
 dir.create(data_out_dir, showWarnings = F,
-           recursive = T)
-
-tab_data_out_dir <- paste0("tab_data/10_clustering/", tissue_file, "/")
-dir.create(tab_data_out_dir, showWarnings = F,
            recursive = T)
 
 # Load the harmony-integrated object from 09 ---------------------------------
@@ -205,7 +201,7 @@ for (res in res_tests){
                         reduction = "harmony_umap")
 
   ggsave(p,
-         filename = paste0(plots_dir, "res", res, ".png"),
+         filename = paste0(results_dir, "res", res, ".png"),
          units = "in", dpi = 600,
          height = 5, width = 6)
 }
@@ -263,7 +259,7 @@ for (i in seq_along(res_tests)){
           plot.title = element_text(hjust = 0.5))
 
   ggsave(p,
-         filename = paste0(plots_dir, "cluster_silhouette_res",
+         filename = paste0(results_dir, "cluster_silhouette_res",
                            res, ".png"),
          units = "in", dpi = 600,
          height = 4, width = 6)
@@ -297,7 +293,7 @@ for (i in seq_along(res_tests)){
       panel.grid = element_blank(),
       axis.text.x = element_text(color = "black", face = "bold"))
   ggsave(p,
-         filename = paste0(plots_dir, "cluster_alluvial_res", res, ".png"),
+         filename = paste0(results_dir, "cluster_alluvial_res", res, ".png"),
          units = "in", dpi = 600, bg = "white",
          height = 12, width = 3)
 }
@@ -305,15 +301,15 @@ for (i in seq_along(res_tests)){
 message2("Saving cluster-quality tables")
 
 write.csv(bind_rows(sil_list),
-          file = paste0(tab_data_out_dir, "approx_silhouette.csv"),
+          file = paste0(results_dir, "approx_silhouette.csv"),
           row.names = F)
 
 write.csv(bind_rows(purity_list),
-          file = paste0(tab_data_out_dir, "neighbor_purity.csv"),
+          file = paste0(results_dir, "neighbor_purity.csv"),
           row.names = F)
 
 write.csv(data.frame(resolution = res_tests, modularity = modularity_vec),
-          file = paste0(tab_data_out_dir, "graph_modularity.csv"),
+          file = paste0(results_dir, "graph_modularity.csv"),
           row.names = F)
 
 message2("Saving clustered metadata and UMAP")

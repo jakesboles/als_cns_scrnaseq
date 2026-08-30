@@ -1,17 +1,17 @@
 # Two things happen here, both per task:
 #
 # 1. Rebuilds the full tissue object, applies the round-1 annotation
-#    (cell_type1, from tab_data/12_annotation1/), and folds in each cell
+#    (cell_type1, from results/12_annotation1/), and folds in each cell
 #    type's round-2 annotation (cell_type2, from 14_findmarkers2.R's
 #    per-cell-type annotations.csv) -- unchanged from the original
-#    15_annotation2.R, saved to plots/15_annotation2/<tissue>_*_labels.png.
+#    15_annotation2.R, saved to results/15_annotation2/<tissue>_*_labels.png.
 # 2. Subsets that object to one of the cell_type2 groups below and
 #    re-processes it from scratch, very similarly to 13_subclustering1.R:
 #    fresh PCA/Harmony/neighbors/UMAP/clustering, picks the resolution
 #    with the highest graph modularity, runs FindAllMarkers(), and saves
 #    markers/a top-5 dot plot/a cluster DimPlot plus the re-processed
 #    object (metadata, normalized expression, Harmony embedding, UMAP)
-#    to <data|plots|tab_data>/15_subclustering2/<tissue>/<group>/. Also
+#    to data|results/15_subclustering2/<tissue>/<group>/. Also
 #    saves a DimPlot of the input cell_type2 labels on the new embedding,
 #    before clustering -- most useful for the multi-cell-type groups, to
 #    see whether the cell types that went in land in separate regions or
@@ -82,7 +82,7 @@ setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
 # Resolution chosen per tissue, matching 11_findmarkers.R/12_annotation1.R/
 # 13_subclustering1.R exactly -- this is the resolution the round-1
-# "cell_type1" annotation (tab_data/12_annotation1/<tissue>_annotations.csv)
+# "cell_type1" annotation (results/12_annotation1/<tissue>_annotations.csv)
 # was built from.
 tissues <- data.frame(
   file = c("brain", "sc", "muscle"),
@@ -138,8 +138,8 @@ resolution_col <- paste0("res", resolution, "_clusters")
 message2(paste0("Processing ", group_label, " (", tissue_title,
                 "), task ", task_id, "/", length(subclustering_targets)))
 
-plots_dir <- "plots/15_annotation2/"
-dir.create(plots_dir, showWarnings = F, recursive = T)
+results_dir <- "results/15_annotation2/"
+dir.create(results_dir, showWarnings = F, recursive = T)
 
 # Load the full tissue object used to create the subsets --------------------
 # Same object 13_subclustering1.R built before subsetting: 09_integration's
@@ -163,7 +163,7 @@ message2("Applying round-1 cluster annotations")
 Idents(obj) <- resolution_col
 
 annots <- Pull_Cluster_Annotation(
-  annotation = paste0("tab_data/12_annotation1/", tissue_file, "_annotations.csv")
+  annotation = paste0("results/12_annotation1/", tissue_file, "_annotations.csv")
 )
 
 obj <- Rename_Clusters(obj,
@@ -175,7 +175,7 @@ p <- DimPlot_scCustom(obj,
                       group.by = "cell_type1",
                       reduction = "harmony_umap")
 ggsave(p,
-       filename = paste0(plots_dir, tissue_file, "_round1_labels.png"),
+       filename = paste0(results_dir, tissue_file, "_round1_labels.png"),
        units = "in", dpi = 300,
        height = 6, width = 8)
 
@@ -198,7 +198,7 @@ for (cell_type_target in cell_types){
   sub_meta <- readRDS(paste0("data/13_subclustering1/", tissue_file, "/",
                              cell_type_target, "/metadata.rds"))
 
-  modularity_df <- read.csv(paste0("tab_data/13_subclustering1/", tissue_file, "/",
+  modularity_df <- read.csv(paste0("results/13_subclustering1/", tissue_file, "/",
                                    cell_type_target, "/graph_modularity.csv"))
   best_res <- modularity_df$resolution[which.max(modularity_df$modularity)]
   sub_res_col <- paste0("res", best_res, "_clusters")
@@ -208,7 +208,7 @@ for (cell_type_target in cell_types){
   # needed for this join, and matching by value sidesteps any risk of a
   # silent off-by-one if cluster factor levels aren't sorted the way
   # Rename_Clusters() would assume.
-  annot_csv <- read.csv(paste0("tab_data/14_findmarkers2/", tissue_file, "/",
+  annot_csv <- read.csv(paste0("results/14_findmarkers2/", tissue_file, "/",
                                cell_type_target, "/annotations.csv"))
 
   new_labels[[cell_type_target]] <- annot_csv$cell_type[match(as.character(sub_meta[[sub_res_col]]),
@@ -229,7 +229,7 @@ p <- DimPlot_scCustom(obj,
                       group.by = "cell_type2",
                       reduction = "harmony_umap")
 ggsave(p,
-       filename = paste0(plots_dir, tissue_file, "_new_labels.png"),
+       filename = paste0(results_dir, tissue_file, "_new_labels.png"),
        units = "in", dpi = 300,
        height = 6, width = 8)
 
@@ -242,11 +242,8 @@ sub_obj <- subset(obj, subset = cell_type2 %in% cell_types_target)
 group_data_dir <- paste0("data/15_subclustering2/", tissue_file, "/", group_label, "/")
 dir.create(group_data_dir, showWarnings = F, recursive = T)
 
-group_plots_dir <- paste0("plots/15_subclustering2/", tissue_file, "/", group_label, "/")
-dir.create(group_plots_dir, showWarnings = F, recursive = T)
-
-group_tab_data_dir <- paste0("tab_data/15_subclustering2/", tissue_file, "/", group_label, "/")
-dir.create(group_tab_data_dir, showWarnings = F, recursive = T)
+group_results_dir <- paste0("results/15_subclustering2/", tissue_file, "/", group_label, "/")
+dir.create(group_results_dir, showWarnings = F, recursive = T)
 
 # Rebuild from real raw counts for this group's cells ------------------------
 # FindVariableFeatures()'s default "vst" method needs real counts -- see
@@ -326,7 +323,7 @@ p <- DimPlot_scCustom(working_obj,
                       group.by = "cell_type2",
                       reduction = "harmony_umap")
 ggsave(p,
-       filename = paste0(group_plots_dir, "cell_type2_dimplot.png"),
+       filename = paste0(group_results_dir, "cell_type2_dimplot.png"),
        units = "in", dpi = 300,
        height = 6, width = 7)
 
@@ -357,7 +354,7 @@ message2("Saving graph modularity table and plot")
 modularity_df <- data.frame(resolution = res_tests, modularity = modularity_vec)
 
 write.csv(modularity_df,
-          file = paste0(group_tab_data_dir, "graph_modularity.csv"),
+          file = paste0(group_results_dir, "graph_modularity.csv"),
           row.names = F)
 
 p <- ggplot(modularity_df, aes(x = resolution, y = modularity)) +
@@ -366,7 +363,7 @@ p <- ggplot(modularity_df, aes(x = resolution, y = modularity)) +
   theme_bw() +
   theme(axis.text = element_text(color = "black"))
 ggsave(p,
-       filename = paste0(group_plots_dir, "graph_modularity.png"),
+       filename = paste0(group_results_dir, "graph_modularity.png"),
        units = "in", dpi = 300,
        height = 4, width = 6)
 
@@ -390,7 +387,7 @@ message2("Finding cluster markers")
 markers <- FindAllMarkers(working_obj)
 
 write.csv(markers,
-          file = paste0(group_tab_data_dir, "markers.csv"))
+          file = paste0(group_results_dir, "markers.csv"))
 
 message2("Making top 5 marker dot plot")
 
@@ -404,7 +401,7 @@ p <- dittoDotPlot(working_obj,
                   vars = top5,
                   group.by = best_res_col)
 ggsave(p,
-       filename = paste0(group_plots_dir, "top5_dotplot.png"),
+       filename = paste0(group_results_dir, "top5_dotplot.png"),
        units = "in", dpi = 600,
        height = 8, width = 20)
 
@@ -414,13 +411,13 @@ p <- DimPlot_scCustom(working_obj,
                       group.by = best_res_col,
                       reduction = "harmony_umap")
 ggsave(p,
-       filename = paste0(group_plots_dir, "cluster_dimplot.png"),
+       filename = paste0(group_results_dir, "cluster_dimplot.png"),
        units = "in", dpi = 300,
        height = 6, width = 7)
 
 message2("Writing annotation template")
 
-Create_Cluster_Annotation_File(file_path = group_tab_data_dir,
+Create_Cluster_Annotation_File(file_path = group_results_dir,
                                file_name = "annotations")
 
 # Save metadata, integrated embedding, normalized expression, and UMAP -----

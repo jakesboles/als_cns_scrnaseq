@@ -25,7 +25,7 @@ message2 <- function(text){
   message(paste0(v1, text, v1))
 }
 
-# Saves a feature plot + violin plot pair for one gene. Reads plots_dir
+# Saves a feature plot + violin plot pair for one gene. Reads results_dir
 # from the global environment (set once below, per-task) rather than
 # taking it as an argument, matching how this was originally written.
 combined_plot <- function(s, gene, res){
@@ -47,7 +47,7 @@ combined_plot <- function(s, gene, res){
                heights = c(2, 1))
 
   ggsave(p,
-         filename = paste0(plots_dir, gene, ".png"),
+         filename = paste0(results_dir, gene, ".png"),
          units = "in", dpi = 300,
          height = 9, width = 7)
 }
@@ -105,10 +105,10 @@ message2(paste0("Processing ", tissue_title, " (task ", task_id, "/",
 
 data_in_dir <- paste0("data/09_integration/", tissue_file, "/")
 clusters_in_dir <- paste0("data/10_clustering/", tissue_file, "/")
-markers_in_dir <- paste0("tab_data/11_findmarkers/", tissue_file, "/")
+markers_in_dir <- paste0("results/11_findmarkers/", tissue_file, "/")
 
-plots_dir <- paste0("plots/12_annotation1/", tissue_file, "/")
-dir.create(plots_dir, showWarnings = F,
+results_dir <- paste0("results/12_annotation1/", tissue_file, "/")
+dir.create(results_dir, showWarnings = F,
            recursive = T)
 
 # Load the clustered object and its markers ----------------------------------
@@ -132,7 +132,7 @@ p <- DimPlot_scCustom(obj,
                       reduction = "umap",
                       group.by = paste0("res", resolution, "_clusters"))
 ggsave(p,
-       filename = paste0(plots_dir, "cluster_dimplot.png"),
+       filename = paste0(results_dir, "cluster_dimplot.png"),
        units = "in", dpi = 300,
        height = 6, width = 7)
 
@@ -150,7 +150,7 @@ p <- dittoDotPlot(obj,
                   vars = top5,
                   group.by = paste0("res", resolution, "_clusters"))
 ggsave(p,
-       filename = paste0(plots_dir, "top5_dotplot.png"),
+       filename = paste0(results_dir, "top5_dotplot.png"),
        units = "in", dpi = 600,
        height = 8, width = 20)
 

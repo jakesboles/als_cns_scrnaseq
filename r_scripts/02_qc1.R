@@ -20,12 +20,8 @@ message2 <- function(text){
 # Create directories ------------------------------------------------------
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
-plots_dir <- "plots/02_qc1/"
-dir.create(plots_dir, showWarnings = F,
-           recursive = T)
-
-csv_dir <- "tab_data/02_qc1/"
-dir.create(csv_dir, showWarnings = F,
+results_dir <- "results/02_qc1/"
+dir.create(results_dir, showWarnings = F,
            recursive = T)
 
 data_out_dir <- "data/02_qc1/"
@@ -128,7 +124,7 @@ obj <- obj %>%
 #         axis.title = element_blank(),
 #         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
 #         plot.title = element_text(hjust = 0.5, size = 20))
-# ggsave(filename = paste0(plots_dir, "20251029_ncount.png"),
+# ggsave(filename = paste0(results_dir, "20251029_ncount.png"),
 #        units = "in", dpi = 600,
 #        height = 9, width = 13)
 # 
@@ -146,7 +142,7 @@ obj <- obj %>%
 #         axis.title = element_blank(),
 #         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
 #         plot.title = element_text(hjust = 0.5, size = 20))
-# ggsave(filename = paste0(plots_dir, "20251029_nfeature.png"),
+# ggsave(filename = paste0(results_dir, "20251029_nfeature.png"),
 #        units = "in", dpi = 600,
 #        height = 9, width = 13)
 # 
@@ -164,7 +160,7 @@ obj <- obj %>%
 #         axis.title = element_blank(),
 #         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
 #         plot.title = element_text(hjust = 0.5, size = 20))
-# ggsave(filename = paste0(plots_dir, "20251029_mito.png"),
+# ggsave(filename = paste0(results_dir, "20251029_mito.png"),
 #        units = "in", dpi = 600,
 #        height = 9, width = 13)
 # 
@@ -182,7 +178,7 @@ obj <- obj %>%
 #         axis.title = element_blank(),
 #         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
 #         plot.title = element_text(hjust = 0.5, size = 20))
-# ggsave(filename = paste0(plots_dir, "20251029_complex.png"),
+# ggsave(filename = paste0(results_dir, "20251029_complex.png"),
 #        units = "in", dpi = 600,
 #        height = 9, width = 13)
 
@@ -221,7 +217,7 @@ for (i in seq_along(list)){
     ggtitle(tissues$title[i])
   
   ggsave(p,
-         filename = paste0(plots_dir, "nfeature_", tissues$file[i], ".png"),
+         filename = paste0(results_dir, "nfeature_", tissues$file[i], ".png"),
          units = "in", dpi = 600,
          height = 6, width = 12)
   
@@ -233,7 +229,7 @@ for (i in seq_along(list)){
     ggtitle(tissues$title[i])
   
   ggsave(p,
-         filename = paste0(plots_dir, "numi_", tissues$file[i], ".png"),
+         filename = paste0(results_dir, "numi_", tissues$file[i], ".png"),
          units = "in", dpi = 600,
          height = 6, width = 12)
 
@@ -244,7 +240,7 @@ for (i in seq_along(list)){
     ggtitle(tissues$title[i]) 
   
   ggsave(p,
-         filename = paste0(plots_dir, "mito_", tissues$file[i], ".png"),
+         filename = paste0(results_dir, "mito_", tissues$file[i], ".png"),
          units = "in", dpi = 600,
          height = 6, width = 12)
 
@@ -254,7 +250,7 @@ for (i in seq_along(list)){
     ggtitle(tissues$title[i])
   
   ggsave(p,
-         filename = paste0(plots_dir, "complexity_", tissues$file[i], ".png"),
+         filename = paste0(results_dir, "complexity_", tissues$file[i], ".png"),
          units = "in", dpi = 600,
          height = 6, width = 12)
   
@@ -270,7 +266,7 @@ for (i in seq_along(list)){
     left_join(counts, by = "id")
   
   write.csv(stats, 
-            file = paste0(csv_dir, "median_stats_", tissues$file[i], ".csv"),
+            file = paste0(results_dir, "median_stats_", tissues$file[i], ".csv"),
             row.names = F)
     
 }
