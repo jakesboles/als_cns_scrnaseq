@@ -293,29 +293,33 @@ for (i in seq_along(cell_types)){
 
   write.csv(res,
             file = paste0(ct_results_dir, "sALS_vs_Control.csv"))
-
-  res_shrunk <- lfcShrink(dds,
-                          coef = "group_sALS_vs_Control",
-                          type = "apeglm")
-
+  
+  suppressMessages({
+    res_shrunk <- lfcShrink(dds,
+                            coef = "group_sALS_vs_Control",
+                            type = "apeglm")
+  })
+  
   write.csv(res_shrunk,
             file = paste0(ct_results_dir, "sALS_vs_Control_lfc_shrunk.csv"))
-
+  
   res <- results(dds,
                  contrast = c("group", "C9orf72", "Control"),
                  filterFun = ihw,
                  independentFiltering = T)
-
+  
   res <- as.data.frame(res)
-
+  
   write.csv(res,
             file = paste0(ct_results_dir, "C9orf72_vs_Control.csv"))
-
-  res_shrunk <- lfcShrink(dds,
-                          coef = "group_C9orf72_vs_Control",
-                          type = "apeglm")
-
+  
+  suppressMessages({
+    res_shrunk <- lfcShrink(dds,
+                            coef = "group_C9orf72_vs_Control",
+                            type = "apeglm")
+  })
+  
   write.csv(res_shrunk,
             file = paste0(ct_results_dir, "C9orf72_vs_Control_lfc_shrunk.csv"))
-
+  
 }
