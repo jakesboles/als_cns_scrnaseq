@@ -185,14 +185,16 @@ for (i in seq_along(cell_types)){
   bulk <- AggregateExpression(sub,
                               assays = "RNA",
                               return.seurat = F,
-                              layer = "counts",
+                              # layer = "counts",
                               group.by = c("orig.ident"))
 
   exp <- bulk$RNA
 
   meta_ct <- sub@meta.data %>%
     dplyr::select(c(orig.ident, group, sex, age_at_death)) %>%
-    distinct()
+    distinct() %>%
+    mutate(orig.ident = str_replace_all(orig.ident, "_", "-"),
+           age_scale = scale(age_at_death, center = T, scale = T)[,1])
 
   idx <- match(colnames(exp), meta_ct$orig.ident)
   meta_ct <- meta_ct[idx, ]
@@ -200,9 +202,9 @@ for (i in seq_along(cell_types)){
 
   dds <- DESeqDataSetFromMatrix(countData = exp,
                                 colData = meta_ct,
-                                design = ~ sex + age_at_death + group) # change this as needed
+                                design = ~ sex + age_scale + group) # change this as needed
 
-  keep <- rowSums(counts(dds) >= 5) >= 4 # change these cutoffs as needed
+  keep <- rowSums(counts(dds) >= 10) >= 10 # change these cutoffs as needed
 
   dds <- dds[keep, ]
 
