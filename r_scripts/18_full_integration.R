@@ -42,6 +42,14 @@
 #   FeaturePlot) and for hdWGCNA/MiloR, both of which build their own kNN
 #   graphs from a stored embedding rather than needing Seurat's
 #   FindNeighbors() graph objects saved separately.
+# - RunUMAP() switched from the graph-based nn.name = "RNA.nn" approach
+#   (matching 10/13/15/17) to running directly off the "harmony"
+#   reduction, per the user, after the graph-based UMAP didn't look
+#   right. That switch caused a segfault on the brain_sc target (500K+
+#   cells) inside RunUMAP()'s default spectral initialization
+#   (RSpectra::eigs_sym) -- see the comment above that RunUMAP() call for
+#   the fix (`uwot.init = "pca"`) and the accompanying `n_neighbors` ->
+#   `n.neighbors` typo fix.
 
 suppressMessages({
   library(Seurat)
@@ -149,11 +157,33 @@ obj <- IntegrateLayers(obj,
 
 obj[["RNA"]] <- JoinLayers(obj[["RNA"]])
 
-# Compute the NN graph and UMAP ------------------------------------------
-# Matches 10_clustering.R/13_subclustering1.R/15_subclustering2.R's
-# neighbor graph/UMAP block exactly.
+# Compute UMAP directly on the Harmony embedding ------------------------
+# Switched from the graph-based nn.name = "RNA.nn" approach (still
+# commented out below) to running RunUMAP() straight off the "harmony"
+# reduction, per the user -- the graph-based UMAP wasn't visually
+# satisfying. That switch is what surfaced two bugs that the graph-based
+# path had been silently absorbing:
+# - `n_neighbors = 15L` isn't a real RunUMAP() argument (it's
+#   `n.neighbors`, dotted) -- Seurat warns "arguments not used:
+#   n_neighbors" and silently falls back to its own default of 30. This
+#   typo is actually present in every RunUMAP() call across this project
+#   (10/13/15/17, and the commented block below), but it was harmless
+#   everywhere else because nn.name = "RNA.nn" supplies the neighbor
+#   structure directly and n.neighbors/n_neighbors is never consulted --
+#   here, with no nn.name, n.neighbors actually controls the result, so
+#   the typo is fixed.
+# - RunUMAP()'s default initialization (`uwot.init = "spectral"`) builds
+#   the graph Laplacian and eigendecomposes it via RSpectra, which
+#   segfaults on this combined-tissue scale (500K+ cells) -- a known
+#   uwot/RSpectra failure mode on large/sparse graphs (satijalab/seurat
+#   #2256, #2259; RSpectra's ARPACK-based solver can crash outright
+#   rather than error cleanly). `uwot.init = "pca"` initializes from the
+#   PCA/Harmony embedding directly instead, skipping RSpectra entirely.
+# This is an informed hypothesis based on the stack trace, not verified
+# by actually running it (no R/Seurat runtime in this dev container) --
+# rerun and see if the segfault is gone.
 
-message2("Computing neighbor graph and UMAP")
+message2("Computing UMAP directly on the Harmony embedding")
 
 obj <- RunUMAP(obj,
                umap.method = "uwot",
@@ -162,7 +192,8 @@ obj <- RunUMAP(obj,
                # nn.name = "RNA.nn",
                metric = "euclidean",
                min.dist = 0.5,
-               n_neighbors = 15L,
+               n.neighbors = 15L,
+               uwot.init = "pca",
                reduction.name = "harmony_umap",
                return.model = F)
 
