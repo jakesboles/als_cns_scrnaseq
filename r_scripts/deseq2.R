@@ -69,6 +69,28 @@
 #   match on the orig.ident column directly and set matching rownames,
 #   since DESeqDataSetFromMatrix() requires colData's rownames to equal
 #   countData's colnames exactly.
+# - This PR restarts from main after the user's own follow-up commit
+#   ("Revised and debugged DESeq2 script") landed there directly, so
+#   those fixes are carried forward as-is rather than reverted: `layer =
+#   "counts"` in AggregateExpression() is commented out, orig.ident gets
+#   its underscores swapped for hyphens before matching against
+#   AggregateExpression()'s output columns (it sanitizes "_" -> "-"
+#   internally, since it uses "_" as its own separator when group.by has
+#   multiple columns), age is entered as a centered/scaled `age_scale`
+#   rather than raw `age_at_death`, and the low-count gene filter is
+#   `>= 10 counts in >= 10 samples`.
+# - Adds per-cell-type per-sample abundance filtering (see the comment
+#   above the cell type loop) after the user hit DESeq2's "every gene
+#   contains at least one zero, cannot compute log geometric means"
+#   error on sparsely-represented cell types (motor cortex macrophages,
+#   spinal cord B-cells -- many samples with <10 contributing cells).
+#   Every cell type now also writes results/deseq2/<tissue>/<cell_type>/
+#   sample_filtering.csv (orig.ident, group, n_cells, retained) up front,
+#   before the skip check -- so a skipped or thinned cell type's sample
+#   composition can be reviewed later without rerunning anything. Note
+#   that age_scale is computed from the retained samples only (after
+#   filtering), not the full pre-filter sample set, so its scaling is
+#   specific to what actually goes into that cell type's model.
 
 suppressMessages({
   library(tidyverse)
@@ -173,6 +195,17 @@ obj@meta.data$group <- factor(obj@meta.data$group,
 
 cell_types <- unique(obj$cell_type3)
 
+# A pseudobulk sample built from too few cells is mostly zero, which can
+# make every gene contain a zero in some sample -- DESeq2's default
+# median-of-ratios size factor estimation then fails outright
+# ("every gene contains at least one zero, cannot compute log geometric
+# means"). Below this per-sample cell count, that sample is dropped from
+# the cell type's pseudobulk; if too few samples remain in any group
+# after dropping, the whole cell type is skipped rather than run on an
+# unreliable/unbalanced design.
+min_cells_per_sample <- 10 # change as needed
+min_samples_per_group <- 3 # change as needed
+
 for (i in seq_along(cell_types)){
 
   message(paste0(cell_types[i], " in ", tissue_title))
@@ -182,6 +215,9 @@ for (i in seq_along(cell_types)){
 
   file <- str_replace_all(cell_types[i], " ", "_")
 
+  ct_results_dir <- paste0(results_dir, file, "/")
+  dir.create(ct_results_dir, showWarnings = F, recursive = T)
+
   bulk <- AggregateExpression(sub,
                               assays = "RNA",
                               return.seurat = F,
@@ -190,11 +226,44 @@ for (i in seq_along(cell_types)){
 
   exp <- bulk$RNA
 
+  cell_counts <- sub@meta.data %>%
+    dplyr::count(orig.ident, name = "n_cells")
+
+  # Every sample present for this cell type, whether or not it survives
+  # the min_cells_per_sample filter below -- saved so a skipped/thinned
+  # cell type's sample composition can be checked later without rerunning
+  # anything.
+  sample_table <- sub@meta.data %>%
+    dplyr::select(orig.ident, group) %>%
+    distinct() %>%
+    left_join(cell_counts, by = "orig.ident") %>%
+    mutate(retained = n_cells >= min_cells_per_sample) %>%
+    arrange(group, orig.ident)
+
+  write.csv(sample_table,
+            file = paste0(ct_results_dir, "sample_filtering.csv"),
+            row.names = F)
+
   meta_ct <- sub@meta.data %>%
     dplyr::select(c(orig.ident, group, sex, age_at_death)) %>%
     distinct() %>%
+    left_join(cell_counts, by = "orig.ident") %>%
+    filter(n_cells >= min_cells_per_sample)
+
+  if (any(table(meta_ct$group) < min_samples_per_group)){
+    message(paste0("Skipping ", cell_types[i], " (", tissue_title, ") -- ",
+                   "fewer than ", min_samples_per_group, " samples per ",
+                   "group have >= ", min_cells_per_sample, " ",
+                   cell_types[i], " cells."))
+    next
+  }
+
+  meta_ct <- meta_ct %>%
+    dplyr::select(-n_cells) %>%
     mutate(orig.ident = str_replace_all(orig.ident, "_", "-"),
            age_scale = scale(age_at_death, center = T, scale = T)[,1])
+
+  exp <- exp[, meta_ct$orig.ident, drop = F]
 
   idx <- match(colnames(exp), meta_ct$orig.ident)
   meta_ct <- meta_ct[idx, ]
@@ -214,9 +283,6 @@ for (i in seq_along(cell_types)){
           file = paste0(results_dir, file, "_dds.rds"))
 
   # resultsNames(dds)
-
-  ct_results_dir <- paste0(results_dir, file, "/")
-  dir.create(ct_results_dir, showWarnings = F, recursive = T)
 
   res <- results(dds,
                  contrast = c("group", "sALS", "Control"),
