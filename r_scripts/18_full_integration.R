@@ -50,6 +50,8 @@ suppressMessages({
   library(BPCells)
 })
 
+options(future.globals.maxSize = 250 * 1024^3)
+
 message2 <- function(text){
   v1 <- paste(rep("~", 15),
               collapse = "")
@@ -153,26 +155,37 @@ obj[["RNA"]] <- JoinLayers(obj[["RNA"]])
 
 message2("Computing neighbor graph and UMAP")
 
-obj <- obj %>%
-  FindNeighbors(reduction = "harmony",
-                dims = 1:20,
-                k.param = 15,
-                nn.method = "annoy",
-                annoy.metric = "euclidean",
-                return.neighbor = T) %>%
-  FindNeighbors(reduction = "harmony",
-                dims = 1:20,
-                k.param = 15,
-                nn.method = "annoy",
-                annoy.metric = "euclidean",
-                compute.SNN = T) %>%
-  RunUMAP(umap.method = "uwot",
-          nn.name = "RNA.nn",
-          metric = "euclidean",
-          min.dist = 0.5,
-          n_neighbors = 15L,
-          reduction.name = "harmony_umap",
-          return.model = F)
+obj <- RunUMAP(obj,
+               umap.method = "uwot",
+               reduction = "harmony",
+               dims = 1:20,
+               # nn.name = "RNA.nn",
+               metric = "euclidean",
+               min.dist = 0.5,
+               n_neighbors = 15L,
+               reduction.name = "harmony_umap",
+               return.model = F)
+
+# obj <- obj %>%
+#   FindNeighbors(reduction = "harmony",
+#                 dims = 1:20,
+#                 k.param = 15,
+#                 nn.method = "annoy",
+#                 annoy.metric = "euclidean",
+#                 return.neighbor = T) %>%
+#   FindNeighbors(reduction = "harmony",
+#                 dims = 1:20,
+#                 k.param = 15,
+#                 nn.method = "annoy",
+#                 annoy.metric = "euclidean",
+#                 compute.SNN = T) %>%
+#   RunUMAP(umap.method = "uwot",
+#           nn.name = "RNA.nn",
+#           metric = "euclidean",
+#           min.dist = 0.5,
+#           n_neighbors = 15L,
+#           reduction.name = "harmony_umap",
+#           return.model = F)
 
 # Diagnostic DimPlots ---------------------------------------------------
 # final_label2/Batch/Group from the old script are cell_type3/batch/group
