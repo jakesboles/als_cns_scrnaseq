@@ -305,11 +305,26 @@ message2("Computing UMAP for diagnostics")
 # Matches 09_*_integration.R's scope -- a diagnostic UMAP only, no
 # clustering. RunUMAP() searches directly off the Harmony reduction, no
 # separate FindNeighbors() call needed first.
-working_obj <- RunUMAP(working_obj,
-                       dims = 1:20,
-                       reduction = "harmony",
-                       reduction.name = "harmony_umap",
-                       reduction.key = "harmonyumap_")
+working_obj <- working_obj %>%
+  FindNeighbors(reduction = "harmony",
+                dims = 1:20,
+                k.param = 15,
+                nn.method = "annoy",
+                annoy.metric = "euclidean",
+                return.neighbor = T) %>%
+  FindNeighbors(reduction = "harmony",
+                dims = 1:20,
+                k.param = 15,
+                nn.method = "annoy",
+                annoy.metric = "euclidean",
+                compute.SNN = T) %>%
+  RunUMAP(umap.method = "uwot",
+          nn.name = "RNA.nn",
+          metric = "euclidean",
+          min.dist = 0.5,
+          n_neighbors = 15L,
+          reduction.name = "harmony_umap",
+          return.model = T)
 
 message2("Making cell_type3 DimPlot")
 
