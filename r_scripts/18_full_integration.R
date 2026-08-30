@@ -172,7 +172,7 @@ obj <- obj %>%
           min.dist = 0.5,
           n_neighbors = 15L,
           reduction.name = "harmony_umap",
-          return.model = T)
+          return.model = F)
 
 # Diagnostic DimPlots ---------------------------------------------------
 # final_label2/Batch/Group from the old script are cell_type3/batch/group

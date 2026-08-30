@@ -324,7 +324,7 @@ working_obj <- working_obj %>%
           min.dist = 0.5,
           n_neighbors = 15L,
           reduction.name = "harmony_umap",
-          return.model = T)
+          return.model = F)
 
 message2("Making cell_type3 DimPlot")
 
