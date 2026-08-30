@@ -21,12 +21,8 @@ message2("Creating directories")
 
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
-plots_dir <- "plots/03_qc2/"
-dir.create(plots_dir, showWarnings = F,
-           recursive = T)
-
-csv_dir <- "tab_data/03_qc2/"
-dir.create(csv_dir, showWarnings = F,
+results_dir <- "results/03_qc2/"
+dir.create(results_dir, showWarnings = F,
            recursive = T)
 
 data_out_dir <- "data/03_qc2/"
@@ -153,7 +149,7 @@ for (i in seq_along(tissues$title)){
           plot.title = element_text(face = "bold",
                                     hjust = 0.5))
   ggsave(p,
-         filename = paste0(plots_dir,
+         filename = paste0(results_dir,
                            "numi_", tissues$file[i], ".png"),
          units = "in", dpi = 600,
          height = 6, width = 12)
@@ -181,7 +177,7 @@ for (i in seq_along(tissues$title)){
           plot.title = element_text(face = "bold",
                                     hjust = 0.5))
   ggsave(p,
-         filename = paste0(plots_dir,
+         filename = paste0(results_dir,
                            "mito_", tissues$file[i], ".png"),
          units = "in", dpi = 600,
          height = 6, width = 12)
@@ -210,7 +206,7 @@ for (i in seq_along(tissues$title)){
           plot.title = element_text(face = "bold",
                                     hjust = 0.5))
   ggsave(p,
-         filename = paste0(plots_dir,
+         filename = paste0(results_dir,
                            "nfeature_", tissues$file[i], ".png"),
          units = "in", dpi = 600,
          height = 6, width = 12)
@@ -244,11 +240,11 @@ stats <- meta %>%
                 "discarded_count" = "TRUE")
 
 write.csv(thresh_df,
-          file = paste0(csv_dir, "cutoffs.csv"),
+          file = paste0(results_dir, "cutoffs.csv"),
           row.names = F)
 
 write.csv(stats,
-          file = paste0(csv_dir, "filtered_counts.csv"),
+          file = paste0(results_dir, "filtered_counts.csv"),
           row.names = F)
 
 barcodes <- meta %>%
@@ -256,7 +252,7 @@ barcodes <- meta %>%
                   mito_discard, umi_discard, gene_discard, discard))
 
 write.csv(barcodes,
-          file = paste0(csv_dir, "barcode_qc.csv"),
+          file = paste0(results_dir, "barcode_qc.csv"),
           row.names = F)
 
 # Discard low quality cells and save object -------------------------------
@@ -286,6 +282,6 @@ for (i in seq_along(tissues$title)){
     left_join(cell_counts, by = "id")
 
   write.csv(med_stats,
-            file = paste0(csv_dir, "median_stats_", tissues$file[i], ".csv"),
+            file = paste0(results_dir, "median_stats_", tissues$file[i], ".csv"),
             row.names = F)
 }

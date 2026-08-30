@@ -23,8 +23,8 @@ message2 <- function(text){
 
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
-plots_dir <- "plots/04_doubletfinder/"
-dir.create(plots_dir, showWarnings = F,
+results_dir <- "results/04_doubletfinder/"
+dir.create(results_dir, showWarnings = F,
            recursive = T)
 
 data_out_dir <- "data/04_doubletfinder/"
@@ -169,7 +169,7 @@ run_doubletfinder <- function(s, doublet_rate) {
                 guides = "collect")
 
   ggsave(p,
-         filename = paste0(plots_dir, unique(s$orig.ident), "_umap.png"),
+         filename = paste0(results_dir, unique(s$orig.ident), "_umap.png"),
          units = "in", dpi = 600,
          height = 5, width = 10)
 

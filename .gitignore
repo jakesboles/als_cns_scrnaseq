@@ -2,4 +2,5 @@ logs/*
 plots/*
 tab_data/*
 data/*
+results/*
 *.pdf

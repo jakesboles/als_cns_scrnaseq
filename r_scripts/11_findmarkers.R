@@ -28,7 +28,7 @@ message2 <- function(text){
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
 # Clustering resolution chosen per tissue (via graph modularity -- see
-# tab_data/10_clustering/<tissue_file>/graph_modularity.csv), matching the
+# results/10_clustering/<tissue_file>/graph_modularity.csv), matching the
 # choices made in the earlier version of this project.
 tissues <- data.frame(
   title = c("Motor cortex", "Cervical spinal cord", "Skeletal muscle"),
@@ -62,8 +62,8 @@ message2(paste0("Processing ", tissue_title, " (task ", task_id, "/",
 data_in_dir <- paste0("data/09_integration/", tissue_file, "/")
 clusters_in_dir <- paste0("data/10_clustering/", tissue_file, "/")
 
-tab_data_out_dir <- paste0("tab_data/11_findmarkers/", tissue_file, "/")
-dir.create(tab_data_out_dir, showWarnings = F,
+results_dir <- paste0("results/11_findmarkers/", tissue_file, "/")
+dir.create(results_dir, showWarnings = F,
            recursive = T)
 
 # Load expression data and cluster labels ------------------------------------
@@ -98,7 +98,7 @@ markers <- FindAllMarkers(obj)
 message2("Saving markers and annotation template")
 
 write.csv(markers,
-          file = paste0(tab_data_out_dir, "markers.csv"))
+          file = paste0(results_dir, "markers.csv"))
 
-Create_Cluster_Annotation_File(file_path = tab_data_out_dir,
+Create_Cluster_Annotation_File(file_path = results_dir,
                                file_name = paste0("res", resolution, "_annotations"))

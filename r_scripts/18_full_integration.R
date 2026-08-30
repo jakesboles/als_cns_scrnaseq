@@ -90,8 +90,8 @@ message2(paste0("Processing ", target_name, " (",
 data_dir <- paste0("data/18_full_integration/", target_name, "/")
 dir.create(data_dir, showWarnings = F, recursive = T)
 
-plots_dir <- paste0("plots/18_full_integration/", target_name, "/")
-dir.create(plots_dir, showWarnings = F, recursive = T)
+results_dir <- paste0("results/18_full_integration/", target_name, "/")
+dir.create(results_dir, showWarnings = F, recursive = T)
 
 # Load metadata for each tissue being integrated -----------------------
 # Only 17_obj_reassembly.R's metadata is needed here -- its bpcells_data/
@@ -127,12 +127,12 @@ message2("Making PCA diagnostic plots")
 
 p <- ElbowPlot(obj, ndims = 100)
 ggsave(p,
-       filename = paste0(plots_dir, "pca_elbow.png"),
+       filename = paste0(results_dir, "pca_elbow.png"),
        units = "in", dpi = 600, bg = "white",
        height = 6, width = 6)
 
 Iterate_PC_Loading_Plots(obj,
-                         file_path = plots_dir,
+                         file_path = results_dir,
                          file_name = "pca_loadings")
 
 message2("Integrating tissues using Harmony")
@@ -187,7 +187,7 @@ for (group in c("cell_type3", "batch", "tissue", "orig.ident", "group")){
                         reduction = "harmony_umap",
                         group.by = group)
   ggsave(p,
-         filename = paste0(plots_dir, group, "_dimplot.png"),
+         filename = paste0(results_dir, group, "_dimplot.png"),
          units = "in", dpi = 600,
          height = 8, width = w)
 }

@@ -9,8 +9,8 @@ suppressMessages({
 
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
-plots_dir <- "plots/05_qc3/"
-dir.create(plots_dir, 
+results_dir <- "results/05_qc3/"
+dir.create(results_dir,
            showWarnings = F,
            recursive = T)
 
@@ -46,8 +46,13 @@ meta <- read.csv("tab_data/metadata.csv")
 
 pre_stats_list <- list()
 
-pre_stats_files <- list.files("tab_data/02_qc1",
-                              full.names = T)
+# Filtered to just the median_stats CSVs -- 02_qc1.R's plots now live in
+# the same results/02_qc1/ folder since plots and tab_data were merged
+# into results/, so an unfiltered list.files() here would also pick up
+# PNGs and crash on read.csv().
+pre_stats_files <- list.files("results/02_qc1",
+                              full.names = T,
+                              pattern = "^median_stats.*\\.csv$")
 stats_tissues <- c("Motor cortex", "Muscle", "Cervical spinal cord")
 
 for (i in seq_along(pre_stats_files)){
@@ -71,7 +76,7 @@ pre_stats <- pre_stats %>%
                          levels = c("Motor cortex", "Cervical spinal cord", "Muscle"),
                          labels = c("Motor cortex", "Cervical\nspinal cord", "Skeletal muscle")))
 
-contam <- read.csv("tab_data/00_cellbender/cellbender_metrics.csv")[1:90, ] %>%
+contam <- read.csv("results/00_cellbender/cellbender_metrics.csv")[1:90, ] %>%
   dplyr::select(-c(pool, group)) %>% 
   # separate(id, into = c("ID", "Tissue"),
   #          sep = "_") %>%
@@ -193,7 +198,7 @@ plot(pre_stats, Tissue, Median_percent_mito) +
   plot(pre_stats, Group, Median_percent_mito) +
   plot(pre_stats, Batch, Median_percent_mito) + 
   plot_layout(design = design)
-ggsave(paste0(plots_dir, "prefilter_mito.png"),
+ggsave(paste0(results_dir, "prefilter_mito.png"),
        units = "in", dpi = 600,
        height = 6, width = 8)
 
@@ -201,7 +206,7 @@ plot(pre_stats, Tissue, Median_nCount_RNA) +
   plot(pre_stats, Group, Median_nCount_RNA) +
   plot(pre_stats, Batch, Median_nCount_RNA) + 
   plot_layout(design = design)
-ggsave(paste0(plots_dir, "prefilter_numi.png"),
+ggsave(paste0(results_dir, "prefilter_numi.png"),
        units = "in", dpi = 600,
        height = 6, width = 8)
 
@@ -209,7 +214,7 @@ plot(pre_stats, Tissue, Median_nFeature_RNA) +
   plot(pre_stats, Group, Median_nFeature_RNA) +
   plot(pre_stats, Batch, Median_nFeature_RNA) + 
   plot_layout(design = design)
-ggsave(paste0(plots_dir, "prefilter_nfeature.png"),
+ggsave(paste0(results_dir, "prefilter_nfeature.png"),
        units = "in", dpi = 600,
        height = 6, width = 8)
 
@@ -217,7 +222,7 @@ plot(pre_stats, Tissue, Median_log10GenesPerUMI) +
   plot(pre_stats, Group, Median_log10GenesPerUMI) +
   plot(pre_stats, Batch, Median_log10GenesPerUMI) + 
   plot_layout(design = design)
-ggsave(paste0(plots_dir, "prefilter_complexity.png"),
+ggsave(paste0(results_dir, "prefilter_complexity.png"),
        units = "in", dpi = 600,
        height = 6, width = 8)
 
@@ -225,7 +230,7 @@ plot(pre_stats, Tissue, fraction_counts_removed_from_cells) +
   plot(pre_stats, Group, fraction_counts_removed_from_cells) +
   plot(pre_stats, Batch, fraction_counts_removed_from_cells) + 
   plot_layout(design = design)
-ggsave(paste0(plots_dir, "prefilter_contamination.png"),
+ggsave(paste0(results_dir, "prefilter_contamination.png"),
        units = "in", dpi = 600,
        height = 6, width = 8)
 
@@ -233,7 +238,7 @@ ggsave(paste0(plots_dir, "prefilter_contamination.png"),
 
 post_stats_list <- list()
 
-post_stats_files <- list.files("tab_data/03_qc2/",
+post_stats_files <- list.files("results/03_qc2/",
                                full.names = T)
 post_stats_files <- post_stats_files[str_detect(post_stats_files, "median")]
 
@@ -257,7 +262,7 @@ post_stats <- post_stats %>%
                          levels = c("Motor cortex", "Cervical spinal cord", "Muscle"),
                          labels = c("Motor cortex", "Cervical\nspinal cord", "Skeletal muscle")))
 
-counts <- read.csv("tab_data/03_qc2/filtered_counts.csv") %>%
+counts <- read.csv("results/03_qc2/filtered_counts.csv") %>%
   dplyr::rename("ID" = "id", "Tissue" = "tissue") %>%
   mutate(Tissue = factor(Tissue,
                          levels = c("Motor cortex", "Cervical spinal cord", "Skeletal muscle"),
@@ -273,7 +278,7 @@ plot(post_stats, Tissue, retained_count) +
   plot(post_stats, Group, retained_count) +
   plot(post_stats, Batch, retained_count) + 
   plot_layout(design = design)
-ggsave(paste0(plots_dir, "postfilter_cell_count.png"),
+ggsave(paste0(results_dir, "postfilter_cell_count.png"),
        units = "in", dpi = 600,
        height = 6, width = 8)
 
@@ -281,7 +286,7 @@ plot(post_stats, Tissue, retained_percent) +
   plot(post_stats, Group, retained_percent) +
   plot(post_stats, Batch, retained_percent) + 
   plot_layout(design = design)
-ggsave(paste0(plots_dir, "postfilter_cell_percent.png"),
+ggsave(paste0(results_dir, "postfilter_cell_percent.png"),
        units = "in", dpi = 600,
        height = 6, width = 8)
 

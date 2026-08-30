@@ -36,8 +36,7 @@ tissue <- subclustering_targets[[i]]$tissue
 cell <- paste(subclustering_targets[[i]]$cell_types, collapse = "_")
 
 data_in_dir <- paste0("data/15_subclustering2/", tissue, "/", cell, "/")
-plots_dir <- paste0("plots/15_subclustering2/", tissue, "/", cell, "/")
-tab_dir <- paste0("tab_data/15_subclustering2/", tissue, "/", cell, "/")
+results_dir <- paste0("results/15_subclustering2/", tissue, "/", cell, "/")
 
 data_mat <- open_matrix_dir(paste0(data_in_dir, "/bpcells_data"))
 meta <- readRDS(paste0(data_in_dir, "metadata.rds"))
@@ -47,11 +46,11 @@ obj <- CreateSeuratObject(counts = data_mat, meta.data = meta, assay = "RNA")
 obj[["RNA"]]$data <- data_mat
 obj[["harmony_umap"]] <- umap
 
-markers <- read.csv(paste0(tab_dir, "markers.csv"))
+markers <- read.csv(paste0(results_dir, "markers.csv"))
 
 # Get clustering resolution -----------------------------------------------
 
-graph_modularity <- read.csv(paste0(tab_dir, "graph_modularity.csv"))
+graph_modularity <- read.csv(paste0(results_dir, "graph_modularity.csv"))
 
 res <- graph_modularity %>% 
   arrange(desc(modularity)) %>% 
@@ -77,7 +76,7 @@ combined_plot <- function(gene){
                 heights = c(2, 1))
   
   ggsave(p,
-         filename = paste0(plots_dir, gene, ".png"),
+         filename = paste0(results_dir, gene, ".png"),
          units = "in", dpi = 600,
          width = 6, height = 9)
 }
@@ -117,7 +116,7 @@ markers %>%
 
 # Updating annotation sheet -----------------------------------------------
 
-annotations <- read.csv(paste0(tab_dir, "annotations.csv"))
+annotations <- read.csv(paste0(results_dir, "annotations.csv"))
 
 n_clusters <- length(unique(Idents(obj)))
 
@@ -132,7 +131,7 @@ annotations %>%
                                cluster %in% c(18) ~ "L6b EN",
                                cluster %in% c(21) ~ "L5-6 NP EN",
                                cluster %in% c(22) ~ "L5 ET EN")) %>%
-  write.csv(file = paste0(tab_dir, "annotations.csv"),
+  write.csv(file = paste0(results_dir, "annotations.csv"),
             row.names = F,
             quote = F)
 
@@ -146,14 +145,14 @@ dittoBarPlot(obj,
 dittoDotPlot(obj,
              vars = c("MYH7", "TNNT1", "TNNI1", "MYL2", "ATP2A2", "MYH2", "MYH1", "TNNT3", "TNNI2", "MYL1", "ATP2A1"),
              group.by = paste0("res", res, "_clusters"))
-ggsave(filename = paste0(plots_dir, "fiber_typing_genes_dotplot.png"),
+ggsave(filename = paste0(results_dir, "fiber_typing_genes_dotplot.png"),
        units = "in", dpi = 600,
        height = 8, width = 8)
 
 dittoDotPlot(obj,
              vars = c("CHRNA1", "CHRNG", "CHRND", "MYOG", "MYF6", "NCAM1", "FBXO32", "TRIM63", "GDF15"),
              group.by = paste0("res", res, "_clusters"))
-ggsave(filename = paste0(plots_dir, "fiber_health_genes_dotplot.png"),
+ggsave(filename = paste0(results_dir, "fiber_health_genes_dotplot.png"),
        units = "in", dpi = 600,
        height = 8, width = 8)
 
@@ -178,7 +177,7 @@ dittoDotPlot(obj,
              vars = c("CUX2", "CBLN2", "LAMP5", "FREM3", "RORB", "C1QL2", "PRSS12", "FOXP2", "TLE4", "SYT6", "NR4A2", "ETV1", "RSPO2", "PCP4",
                       "FEZF2", "BCL11B", "POU3F1", "CRYM", "TSHZ2", "NEFH", "VAT1L"),
              group.by = paste0("res", res, "_clusters"))
-ggsave(filename = paste0(plots_dir, "en_subtype_genes_dotplot.png"),
+ggsave(filename = paste0(results_dir, "en_subtype_genes_dotplot.png"),
        units = "in", dpi = 600,
        height = 8, width = 12)
 

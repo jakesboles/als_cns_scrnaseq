@@ -15,12 +15,12 @@
 #   subset to one cell type) and "round1_clusters" (the original numeric
 #   round-1 cluster labels). Using round1_clusters, which is the one that
 #   can actually show something on a DimPlot here.
-# - Output directories use tab_data/14_findmarkers2/... and
-#   plots/14_findmarkers2/..., matching every other script's convention
-#   (11/12/13), not the reversed 14_findmarkers2/tab_data/... path in the
-#   original request -- that would have created a new top-level folder
-#   outside the existing .gitignore coverage (plots/, tab_data/, data/,
-#   logs/ only).
+# - Output directory uses results/14_findmarkers2/..., matching every
+#   other script's convention (11/12/13), not the reversed
+#   14_findmarkers2/tab_data/... path in the original request -- that
+#   would have created a new top-level folder outside the existing
+#   .gitignore coverage (results/, data/, logs/ only). plots/ and
+#   tab_data/ were later merged into results/ across the whole pipeline.
 
 suppressMessages({
   library(Seurat)
@@ -97,16 +97,12 @@ message2(paste0("Processing ", cell_type_target, " (", tissue_title,
 
 data_in_dir <- paste0("data/13_subclustering1/", tissue_file, "/",
                       cell_type_target, "/")
-modularity_in_dir <- paste0("tab_data/13_subclustering1/", tissue_file, "/",
+modularity_in_dir <- paste0("results/13_subclustering1/", tissue_file, "/",
                             cell_type_target, "/")
 
-tab_data_dir <- paste0("tab_data/14_findmarkers2/", tissue_file, "/",
-                       cell_type_target, "/")
-dir.create(tab_data_dir, showWarnings = F, recursive = T)
-
-plots_dir <- paste0("plots/14_findmarkers2/", tissue_file, "/",
-                    cell_type_target, "/")
-dir.create(plots_dir, showWarnings = F, recursive = T)
+results_dir <- paste0("results/14_findmarkers2/", tissue_file, "/",
+                      cell_type_target, "/")
+dir.create(results_dir, showWarnings = F, recursive = T)
 
 # Load the object from 13 and prepare it for FindAllMarkers() ---------------
 
@@ -148,7 +144,7 @@ Idents(obj) <- resolution_col
 markers <- FindAllMarkers(obj)
 
 write.csv(markers,
-          file = paste0(tab_data_dir, "markers.csv"))
+          file = paste0(results_dir, "markers.csv"))
 
 # Top 5 marker genes per cluster -----------------------------------------
 
@@ -164,7 +160,7 @@ p <- dittoDotPlot(obj,
                   vars = top5,
                   group.by = resolution_col)
 ggsave(p,
-       filename = paste0(plots_dir, "top5_dotplot.png"),
+       filename = paste0(results_dir, "top5_dotplot.png"),
        units = "in", dpi = 600,
        height = 8, width = 20)
 
@@ -180,7 +176,7 @@ for (gene in genes){
                             # raster.dpi = c(900, 900),
                             pt.size = 0.05)
   ggsave(p,
-         filename = paste0(plots_dir, gene, ".png"),
+         filename = paste0(results_dir, gene, ".png"),
          units = "in", dpi = 300,
          height = 5, width = 6)
 }
@@ -193,7 +189,7 @@ p <- DimPlot_scCustom(obj,
                       group.by = resolution_col,
                       reduction = "harmony_umap")
 ggsave(p,
-       filename = paste0(plots_dir, "cluster_dimplot.png"),
+       filename = paste0(results_dir, "cluster_dimplot.png"),
        units = "in", dpi = 300,
        height = 6, width = 7)
 
@@ -201,7 +197,7 @@ p <- DimPlot_scCustom(obj,
                       group.by = "round1_clusters",
                       reduction = "harmony_umap")
 ggsave(p,
-       filename = paste0(plots_dir, "round1_clusters_dimplot.png"),
+       filename = paste0(results_dir, "round1_clusters_dimplot.png"),
        units = "in", dpi = 300,
        height = 6, width = 7)
 
@@ -209,7 +205,7 @@ p <- DimPlot_scCustom(obj,
                       group.by = "DF.unadj",
                       reduction = "harmony_umap")
 ggsave(p,
-       filename = paste0(plots_dir, "df_unadj_dimplot.png"),
+       filename = paste0(results_dir, "df_unadj_dimplot.png"),
        units = "in", dpi = 300,
        height = 6, width = 7)
 
@@ -217,7 +213,7 @@ p <- dittoBarPlot(obj,
                   var = "DF.unadj",
                   group.by = resolution_col)
 ggsave(p,
-       filename = paste0(plots_dir, "df_unadj_barplot.png"),
+       filename = paste0(results_dir, "df_unadj_barplot.png"),
        units = "in", dpi = 300,
        height = 5, width = 7)
 
@@ -225,5 +221,5 @@ ggsave(p,
 
 message2("Writing annotation template")
 
-Create_Cluster_Annotation_File(file_path = tab_data_dir,
+Create_Cluster_Annotation_File(file_path = results_dir,
                                file_name = "annotations")
