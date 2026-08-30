@@ -30,11 +30,26 @@
 # - The draft selected `sex` and `age` into meta as covariates, but
 #   neither column exists anywhere in this project's single-cell
 #   metadata pipeline (confirmed against 00_cellbender_plotting.R's
-#   explicit column list). demographics_figure.R reads a separate
-#   tab_data/target_als_demographics_compiled.csv with age_at_death, but
-#   that file has never been joined into the single-cell metadata. Left
-#   out of the design for now (design = ~ group only) -- join in
-#   separately if these covariates are wanted.
+#   explicit column list). Per the user, both are needed for this
+#   analysis, so they're now joined in from the separate
+#   tab_data/target_als_demographics_compiled.csv (donor-level, keyed by
+#   `case_number`, used previously only by demographics_figure.R) onto
+#   `id` (the donor-only label added in 02_qc1.R, orig.ident minus the
+#   tissue suffix). `case_number` and `id` disagree on hyphen placement
+#   for at least the Barrow ("GWF") site -- 02_qc1.R has a commented-out
+#   block recoding "GWF-19-47" -> "GWF19-47" for exactly this reason --
+#   so the join key strips all hyphens from both sides rather than
+#   hardcoding the known mismatches. NOTE: the demographics CSV isn't
+#   readable from this dev container (it's an ungitted reference input,
+#   only present on the HPC filesystem), so the exact column name for
+#   sex after janitor::clean_names() is unverified -- `age_at_death` is
+#   confirmed correct (demographics_figure.R already uses it), but
+#   double-check the `sex` column name against the actual file and fix
+#   the dplyr::select() below if it differs. Both covariates are added to
+#   the DESeq2 design (design = ~ sex + age_at_death + group) since the
+#   user called them out as important for this analysis; the group
+#   contrasts/coefficient names below are unaffected by this since group
+#   stays a separate term with the same factor levels.
 # - Output directory restructured to results/deseq2/<tissue>/, matching
 #   every other script's convention; the draft had no tissue segment and
 #   several typo'd path variables (resuls_dir, bare "results").
@@ -62,6 +77,7 @@ suppressMessages({
   library(IHW)
   library(Seurat)
   library(BPCells)
+  library(janitor)
 })
 
 message2 <- function(text){
@@ -115,6 +131,39 @@ raw_mat <- raw_mat[, rownames(meta)]
 
 obj <- CreateSeuratObject(counts = raw_mat, meta.data = meta, assay = "RNA")
 
+# Join in donor demographics (sex, age at death) -----------------------------
+# See header note above re: the case_number/id hyphen mismatch and the
+# unverified "sex" column name.
+
+message2("Joining donor demographics (sex, age at death)")
+
+demo <- read.csv("tab_data/target_als_demographics_compiled.csv") %>%
+  clean_names() %>%
+  mutate(join_key = str_remove_all(case_number, "-")) %>%
+  dplyr::select(join_key, sex, age_at_death) %>% # CONFIRM: "sex" is this file's actual column name post-clean_names()
+  distinct()
+
+obj_ids <- obj@meta.data %>%
+  distinct(id) %>%
+  mutate(join_key = str_remove_all(id, "-"))
+
+unmatched <- obj_ids$id[!obj_ids$join_key %in% demo$join_key]
+if (length(unmatched) > 0){
+  stop(paste0("No demographics match found for donor(s): ",
+              paste(unmatched, collapse = ", "),
+              " -- check tab_data/target_als_demographics_compiled.csv's ",
+              "case_number values against these ids before rerunning."))
+}
+
+obj@meta.data <- obj@meta.data %>%
+  rownames_to_column(var = "cell") %>%
+  mutate(join_key = str_remove_all(id, "-")) %>%
+  left_join(demo, by = "join_key") %>%
+  dplyr::select(-join_key) %>%
+  column_to_rownames(var = "cell")
+
+obj@meta.data$sex <- factor(obj@meta.data$sex)
+
 # Factorize grouping variable, Control as the reference level ---------------
 
 obj@meta.data$group <- factor(obj@meta.data$group,
@@ -142,7 +191,7 @@ for (i in seq_along(cell_types)){
   exp <- bulk$RNA
 
   meta_ct <- sub@meta.data %>%
-    dplyr::select(c(orig.ident, group)) %>%
+    dplyr::select(c(orig.ident, group, sex, age_at_death)) %>%
     distinct()
 
   idx <- match(colnames(exp), meta_ct$orig.ident)
@@ -151,7 +200,7 @@ for (i in seq_along(cell_types)){
 
   dds <- DESeqDataSetFromMatrix(countData = exp,
                                 colData = meta_ct,
-                                design = ~ group) # change this as needed
+                                design = ~ sex + age_at_death + group) # change this as needed
 
   keep <- rowSums(counts(dds) >= 5) >= 4 # change these cutoffs as needed
 
