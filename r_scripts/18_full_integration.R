@@ -42,6 +42,17 @@
 #   FeaturePlot) and for hdWGCNA/MiloR, both of which build their own kNN
 #   graphs from a stored embedding rather than needing Seurat's
 #   FindNeighbors() graph objects saved separately.
+# - RunUMAP() switched from the graph-based nn.name = "RNA.nn" approach
+#   (matching 10/13/15/17) to running directly off the "harmony"
+#   reduction, per the user, after the graph-based UMAP didn't look
+#   right. That switch caused a segfault on the brain_sc target inside
+#   RunUMAP()'s default spectral initialization (RSpectra::eigs_sym) --
+#   NOT explained by brain_sc's cell count, since the larger all_tissues
+#   target runs the identical call without issue. See the comment above
+#   that RunUMAP() call for the current (still not fully confirmed)
+#   hypothesis, the `uwot.init = "pca"` fix, a duplicate/non-finite
+#   diagnostic check added alongside it, and the accompanying
+#   `n_neighbors` -> `n.neighbors` typo fix.
 
 suppressMessages({
   library(Seurat)
@@ -149,11 +160,55 @@ obj <- IntegrateLayers(obj,
 
 obj[["RNA"]] <- JoinLayers(obj[["RNA"]])
 
-# Compute the NN graph and UMAP ------------------------------------------
-# Matches 10_clustering.R/13_subclustering1.R/15_subclustering2.R's
-# neighbor graph/UMAP block exactly.
+# Compute UMAP directly on the Harmony embedding ------------------------
+# Switched from the graph-based nn.name = "RNA.nn" approach (still
+# commented out below) to running RunUMAP() straight off the "harmony"
+# reduction, per the user -- the graph-based UMAP wasn't visually
+# satisfying. That switch is what surfaced two bugs that the graph-based
+# path had been silently absorbing:
+# - `n_neighbors = 15L` isn't a real RunUMAP() argument (it's
+#   `n.neighbors`, dotted) -- Seurat warns "arguments not used:
+#   n_neighbors" and silently falls back to its own default of 30. This
+#   typo is actually present in every RunUMAP() call across this project
+#   (10/13/15/17, and the commented block below), but it was harmless
+#   everywhere else because nn.name = "RNA.nn" supplies the neighbor
+#   structure directly and n.neighbors/n_neighbors is never consulted --
+#   here, with no nn.name, n.neighbors actually controls the result, so
+#   the typo is fixed.
+# - RunUMAP()'s default initialization (`uwot.init = "spectral"`) builds
+#   the graph Laplacian and eigendecomposes it via RSpectra, which
+#   segfaulted on the brain_sc target. An earlier version of this comment
+#   attributed this to brain_sc's cell count (500K+), but the user
+#   pointed out that all_tissues -- a *larger* target running the
+#   identical RunUMAP() call -- completed without issue, which rules that
+#   out as the mechanism. Cell count alone isn't it.
+#   RSpectra's ARPACK-based eigensolver is also known to crash outright
+#   (segfault, not a clean R error) on numerically degenerate input --
+#   e.g. many exactly-duplicated points in the embedding -- rather than
+#   just large ones. Circumstantial support for that specific to
+#   brain_sc: Harmony's own k-means step logged 10x "Quick-TRANSfer stage
+#   steps exceeded maximum" warnings for brain_sc (visible in the pasted
+#   log), a classic symptom of many tied/duplicate points during k-means.
+#   That's a real hypothesis, not a confirmed diagnosis -- the duplicate/
+#   non-finite check logged just below exists to actually find out,
+#   instead of guessing again.
+# `uwot.init = "pca"` initializes UMAP from the embedding directly
+# instead of eigendecomposing the graph Laplacian, avoiding RSpectra
+# regardless of which hypothesis above is right -- kept as the fix since
+# it should hold either way, but flagged here as not fully explained.
+# This is still an informed hypothesis, not verified by actually running
+# it (no R/Seurat runtime in this dev container).
 
-message2("Computing neighbor graph and UMAP")
+message2("Checking Harmony embedding for duplicate/non-finite values")
+
+harmony_emb <- as.data.frame(Embeddings(obj, reduction = "harmony")[, 1:20])
+n_dup <- sum(duplicated(harmony_emb))
+n_nonfinite <- sum(!is.finite(as.matrix(harmony_emb)))
+message2(paste0(nrow(harmony_emb), " cells, ", n_dup,
+                " duplicated embedding rows, ", n_nonfinite,
+                " non-finite values"))
+
+message2("Computing UMAP directly on the Harmony embedding")
 
 obj <- RunUMAP(obj,
                umap.method = "uwot",
@@ -162,7 +217,8 @@ obj <- RunUMAP(obj,
                # nn.name = "RNA.nn",
                metric = "euclidean",
                min.dist = 0.5,
-               n_neighbors = 15L,
+               n.neighbors = 15L,
+               uwot.init = "pca",
                reduction.name = "harmony_umap",
                return.model = F)
 
