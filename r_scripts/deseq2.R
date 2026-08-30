@@ -91,6 +91,11 @@
 #   that age_scale is computed from the retained samples only (after
 #   filtering), not the full pre-filter sample set, so its scaling is
 #   specific to what actually goes into that cell type's model.
+# - The DESeqDataSetFromMatrix()-through-lfcShrink() block is wrapped in
+#   tryCatch() so a cell type that still fails in the pipeline itself
+#   (the abundance filter only catches the most common trigger of the
+#   size-factor error, not every case) is logged and skipped rather than
+#   killing the rest of the tissue's array task.
 
 suppressMessages({
   library(tidyverse)
@@ -269,57 +274,70 @@ for (i in seq_along(cell_types)){
   meta_ct <- meta_ct[idx, ]
   rownames(meta_ct) <- meta_ct$orig.ident
 
-  dds <- DESeqDataSetFromMatrix(countData = exp,
-                                colData = meta_ct,
-                                design = ~ sex + age_scale + group) # change this as needed
+  # The abundance filter above catches the most common cause of DESeq2's
+  # "every gene contains at least one zero" size factor error, but not
+  # every case (e.g. a gene that's zero in every retained sample even
+  # though each sample individually cleared min_cells_per_sample). Wrap
+  # the whole DESeq2 pipeline so a failure on one cell type is logged and
+  # skipped instead of killing the rest of this tissue's task.
+  tryCatch({
 
-  keep <- rowSums(counts(dds) >= 10) >= 10 # change these cutoffs as needed
+    dds <- DESeqDataSetFromMatrix(countData = exp,
+                                  colData = meta_ct,
+                                  design = ~ sex + age_scale + group) # change this as needed
 
-  dds <- dds[keep, ]
+    keep <- rowSums(counts(dds) >= 10) >= 10 # change these cutoffs as needed
 
-  dds <- DESeq(dds)
+    dds <- dds[keep, ]
 
-  saveRDS(dds,
-          file = paste0(results_dir, file, "_dds.rds"))
+    dds <- DESeq(dds)
 
-  # resultsNames(dds)
+    saveRDS(dds,
+            file = paste0(results_dir, file, "_dds.rds"))
 
-  res <- results(dds,
-                 contrast = c("group", "sALS", "Control"),
-                 filterFun = ihw,
-                 independentFiltering = T)
+    # resultsNames(dds)
 
-  res <- as.data.frame(res)
+    res <- results(dds,
+                   contrast = c("group", "sALS", "Control"),
+                   filterFun = ihw,
+                   independentFiltering = T)
 
-  write.csv(res,
-            file = paste0(ct_results_dir, "sALS_vs_Control.csv"))
-  
-  suppressMessages({
-    res_shrunk <- lfcShrink(dds,
-                            coef = "group_sALS_vs_Control",
-                            type = "apeglm")
+    res <- as.data.frame(res)
+
+    write.csv(res,
+              file = paste0(ct_results_dir, "sALS_vs_Control.csv"))
+
+    suppressMessages({
+      res_shrunk <- lfcShrink(dds,
+                              coef = "group_sALS_vs_Control",
+                              type = "apeglm")
+    })
+
+    write.csv(res_shrunk,
+              file = paste0(ct_results_dir, "sALS_vs_Control_lfc_shrunk.csv"))
+
+    res <- results(dds,
+                   contrast = c("group", "C9orf72", "Control"),
+                   filterFun = ihw,
+                   independentFiltering = T)
+
+    res <- as.data.frame(res)
+
+    write.csv(res,
+              file = paste0(ct_results_dir, "C9orf72_vs_Control.csv"))
+
+    suppressMessages({
+      res_shrunk <- lfcShrink(dds,
+                              coef = "group_C9orf72_vs_Control",
+                              type = "apeglm")
+    })
+
+    write.csv(res_shrunk,
+              file = paste0(ct_results_dir, "C9orf72_vs_Control_lfc_shrunk.csv"))
+
+  }, error = function(e){
+    message(paste0("Skipping ", cell_types[i], " (", tissue_title, ") -- ",
+                   "DESeq2 pipeline failed: ", conditionMessage(e)))
   })
-  
-  write.csv(res_shrunk,
-            file = paste0(ct_results_dir, "sALS_vs_Control_lfc_shrunk.csv"))
-  
-  res <- results(dds,
-                 contrast = c("group", "C9orf72", "Control"),
-                 filterFun = ihw,
-                 independentFiltering = T)
-  
-  res <- as.data.frame(res)
-  
-  write.csv(res,
-            file = paste0(ct_results_dir, "C9orf72_vs_Control.csv"))
-  
-  suppressMessages({
-    res_shrunk <- lfcShrink(dds,
-                            coef = "group_C9orf72_vs_Control",
-                            type = "apeglm")
-  })
-  
-  write.csv(res_shrunk,
-            file = paste0(ct_results_dir, "C9orf72_vs_Control_lfc_shrunk.csv"))
-  
+
 }
