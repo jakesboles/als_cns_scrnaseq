@@ -199,50 +199,54 @@ obj[["RNA"]] <- JoinLayers(obj[["RNA"]])
 # This is still an informed hypothesis, not verified by actually running
 # it (no R/Seurat runtime in this dev container).
 
+# harmony <- readRDS(paste0(data_dir, "harmony.rds"))
+# obj[["harmony"]] <- harmony
+
 message2("Checking Harmony embedding for duplicate/non-finite values")
 
 harmony_emb <- as.data.frame(Embeddings(obj, reduction = "harmony")[, 1:20])
 n_dup <- sum(duplicated(harmony_emb))
-n_nonfinite <- sum(!is.finite(as.matrix(harmony_emb)))
+n_nonfinite <- sum(is.infinite(as.matrix(harmony_emb)))
+n_na <- sum(is.na(as.matrix(harmony_emb)))
 message2(paste0(nrow(harmony_emb), " cells, ", n_dup,
                 " duplicated embedding rows, ", n_nonfinite,
                 " non-finite values"))
 
 message2("Computing UMAP directly on the Harmony embedding")
 
-# obj <- RunUMAP(obj,
-#                umap.method = "uwot",
-#                reduction = "harmony",
-#                dims = 1:20,
-#                # nn.name = "RNA.nn",
-#                metric = "euclidean",
-#                min.dist = 0.5,
-#                n.neighbors = 50,
-#                repulsion.strength = 0.5,
-#                uwot.init = "pca",
-#                reduction.name = "harmony_umap",
-#                return.model = F)
+obj <- RunUMAP(obj,
+               umap.method = "uwot",
+               reduction = "harmony",
+               dims = 1:15,
+               # nn.name = "RNA.nn",
+               metric = "euclidean",
+               min.dist = 0.5,
+               n.neighbors = 15L,
+               # repulsion.strength = 0.5,
+               # uwot.init = "random",
+               reduction.name = "harmony_umap",
+               return.model = F)
 
-obj <- obj %>%
-  FindNeighbors(reduction = "harmony",
-                dims = 1:15,
-                k.param = 15,
-                nn.method = "annoy",
-                annoy.metric = "euclidean",
-                return.neighbor = T) %>%
-  FindNeighbors(reduction = "harmony",
-                dims = 1:15,
-                k.param = 15,
-                nn.method = "annoy",
-                annoy.metric = "euclidean",
-                compute.SNN = T) %>%
-  RunUMAP(umap.method = "uwot",
-          nn.name = "RNA.nn",
-          metric = "euclidean",
-          min.dist = 0.5,
-          n.neighbors = 15L,
-          reduction.name = "harmony_umap",
-          return.model = F)
+# obj <- obj %>%
+#   FindNeighbors(reduction = "harmony",
+#                 dims = 1:15,
+#                 k.param = 15,
+#                 nn.method = "annoy",
+#                 annoy.metric = "euclidean",
+#                 return.neighbor = T) %>%
+#   FindNeighbors(reduction = "harmony",
+#                 dims = 1:15,
+#                 k.param = 15,
+#                 nn.method = "annoy",
+#                 annoy.metric = "euclidean",
+#                 compute.SNN = T) %>%
+#   RunUMAP(umap.method = "uwot",
+#           nn.name = "RNA.nn",
+#           metric = "euclidean",
+#           min.dist = 0.5,
+#           n.neighbors = 15L,
+#           reduction.name = "harmony_umap",
+#           return.model = F)
 
 # Diagnostic DimPlots ---------------------------------------------------
 # final_label2/Batch/Group from the old script are cell_type3/batch/group
@@ -257,7 +261,7 @@ for (group in c("cell_type3", "batch", "tissue", "orig.ident", "group")){
                         reduction = "harmony_umap",
                         group.by = group)
   ggsave(p,
-         filename = paste0(results_dir, group, "_dimplot.png"),
+         filename = paste0(results_dir, group, "_dimplot_randominit.png"),
          units = "in", dpi = 600,
          height = 8, width = w)
 }
