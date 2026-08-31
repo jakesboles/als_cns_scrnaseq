@@ -210,39 +210,39 @@ message2(paste0(nrow(harmony_emb), " cells, ", n_dup,
 
 message2("Computing UMAP directly on the Harmony embedding")
 
-obj <- RunUMAP(obj,
-               umap.method = "uwot",
-               reduction = "harmony",
-               dims = 1:20,
-               # nn.name = "RNA.nn",
-               metric = "euclidean",
-               min.dist = 0.5,
-               n.neighbors = 50,
-               repulsion.strength = 0.5,
-               uwot.init = "pca",
-               reduction.name = "harmony_umap",
-               return.model = F)
+# obj <- RunUMAP(obj,
+#                umap.method = "uwot",
+#                reduction = "harmony",
+#                dims = 1:20,
+#                # nn.name = "RNA.nn",
+#                metric = "euclidean",
+#                min.dist = 0.5,
+#                n.neighbors = 50,
+#                repulsion.strength = 0.5,
+#                uwot.init = "pca",
+#                reduction.name = "harmony_umap",
+#                return.model = F)
 
-# obj <- obj %>%
-#   FindNeighbors(reduction = "harmony",
-#                 dims = 1:20,
-#                 k.param = 15,
-#                 nn.method = "annoy",
-#                 annoy.metric = "euclidean",
-#                 return.neighbor = T) %>%
-#   FindNeighbors(reduction = "harmony",
-#                 dims = 1:20,
-#                 k.param = 15,
-#                 nn.method = "annoy",
-#                 annoy.metric = "euclidean",
-#                 compute.SNN = T) %>%
-#   RunUMAP(umap.method = "uwot",
-#           nn.name = "RNA.nn",
-#           metric = "euclidean",
-#           min.dist = 0.5,
-#           n_neighbors = 15L,
-#           reduction.name = "harmony_umap",
-#           return.model = F)
+obj <- obj %>%
+  FindNeighbors(reduction = "harmony",
+                dims = 1:15,
+                k.param = 15,
+                nn.method = "annoy",
+                annoy.metric = "euclidean",
+                return.neighbor = T) %>%
+  FindNeighbors(reduction = "harmony",
+                dims = 1:15,
+                k.param = 15,
+                nn.method = "annoy",
+                annoy.metric = "euclidean",
+                compute.SNN = T) %>%
+  RunUMAP(umap.method = "uwot",
+          nn.name = "RNA.nn",
+          metric = "euclidean",
+          min.dist = 0.5,
+          n.neighbors = 15L,
+          reduction.name = "harmony_umap",
+          return.model = F)
 
 # Diagnostic DimPlots ---------------------------------------------------
 # final_label2/Batch/Group from the old script are cell_type3/batch/group
