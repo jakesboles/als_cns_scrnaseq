@@ -261,7 +261,7 @@ for (group in c("cell_type3", "batch", "tissue", "orig.ident", "group")){
                         reduction = "harmony_umap",
                         group.by = group)
   ggsave(p,
-         filename = paste0(results_dir, group, "_dimplot_randominit.png"),
+         filename = paste0(results_dir, group, "_dimplot.png"),
          units = "in", dpi = 600,
          height = 8, width = w)
 }
