@@ -217,7 +217,7 @@ obj <- RunUMAP(obj,
                # nn.name = "RNA.nn",
                metric = "euclidean",
                min.dist = 0.5,
-               n.neighbors = 15L,
+               n.neighbors = 30,
                uwot.init = "pca",
                reduction.name = "harmony_umap",
                return.model = F)
