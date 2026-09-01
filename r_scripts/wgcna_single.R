@@ -58,6 +58,14 @@
 #   metacells. This project already hit an analogous "too few cells
 #   breaks the pipeline" issue with pseudobulk DESeq2 (deseq2.R); the same
 #   lesson is applied here proactively instead of waiting to hit it.
+# - ConstructNetwork() writes a temp .rda file to the working directory
+#   regardless of tom_outdir/tom_name (unfixed hdWGCNA bug,
+#   smorabit/hdWGCNA#182) -- since every task shares one setwd(), this is
+#   the SLURM-array "multiple jobs writing TOM.rda to the same spot"
+#   collision. Worked around by setwd()-ing into a per-task
+#   data/wgcna_single/<tissue>/<cell_type>/tom/ directory for just that
+#   one call (restored via tryCatch(..., finally = setwd(...)) so the
+#   working directory is put back even if ConstructNetwork() errors).
 # - Saves the decomposed hdWGCNA outputs (module table, harmonized module
 #   eigengenes, smoothed UCell module scores, soft-power table, plots) as
 #   plain CSVs/PNGs under results/wgcna_single/<tissue>/<cell_type>/,
@@ -236,12 +244,34 @@ write.csv(power_table,
 # Build TOM and cluster genes into modules -----------------------------------
 # Letting ConstructNetwork() pick the soft power automatically, matching
 # the draft.
+#
+# ConstructNetwork() (via WGCNA::blockwiseConsensusModules() underneath)
+# writes a temporary .rda file to the current working directory -- not to
+# tom_outdir, and not prefixed by tom_name -- a known, unfixed hdWGCNA bug
+# (smorabit/hdWGCNA#182). Every task in this script shares one setwd() to
+# the project root, so parallel array tasks collide on that same generic
+# temp filename regardless of how unique tom_name is -- this is the
+# SLURM-array TOM.rda collision. Workaround (matching what other hdWGCNA
+# users on SLURM clusters have landed on, per that issue): give this task
+# its own working directory for just this call, so whatever literal
+# filename WGCNA writes internally lands in a physically separate folder.
+# tom_outdir defaults to a "TOM" subfolder of the working directory, so
+# this also isolates the actual named TOM output per task as a side
+# effect, not just the stray temp file.
 
 message2("Constructing network")
 
-obj <- ConstructNetwork(obj,
-                        tom_name = file,
-                        overwrite_tom = T)
+tom_dir <- paste0(data_dir, "tom/")
+dir.create(tom_dir, showWarnings = F, recursive = T)
+
+setwd(tom_dir)
+tryCatch({
+  obj <- ConstructNetwork(obj,
+                          tom_name = file,
+                          overwrite_tom = T)
+}, finally = {
+  setwd("/projects/b1169/boles/als_cns_scrnaseq")
+})
 
 png(paste0(results_dir, "dendrogram.png"),
     height = 8, width = 8, units = "in", res = 600)
