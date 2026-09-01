@@ -210,7 +210,7 @@ message2("Constructing metacells")
 # point, so grouping by it too would be a no-op.
 obj <- MetacellsByGroups(
   seurat_obj = obj,
-  group.by = "orig.ident",
+  group.by = c("orig.ident", "cell_type3"),
   reduction = "harmony",
   k = 25, # change as needed
   max_shared = 10, # change as needed
