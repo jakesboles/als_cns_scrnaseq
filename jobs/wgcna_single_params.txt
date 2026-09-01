@@ -1,0 +1,67 @@
+L2-3 EN,brain
+L5 IT EN,brain
+COL15A1 IN,brain
+L6 IT EN,brain
+L4 EN,brain
+L6 CT EN,brain
+L6b EN,brain
+SST IN,brain
+L5 ET EN,brain
+L5-6 NP EN,brain
+PVALB IN,brain
+Oligodendrocyte,brain
+Microglia,brain
+RELN IN,brain
+VIP IN,brain
+Endothelial cell,brain
+NPY IN,brain
+Astrocyte,brain
+LAMP5 IN,brain
+OPC,brain
+CXCL14 IN,brain
+Pericyte,brain
+Monocyte,brain
+Meninges,brain
+Macrophage,brain
+Proliferating myeloid cell,brain
+T-cell,brain
+NK cell,brain
+Astrocyte,sc
+IN,sc
+SN,sc
+EN,sc
+Oligodendrocyte,sc
+Meninges,sc
+Microglia,sc
+Proliferating myeloid cell,sc
+MN,sc
+OPC,sc
+Endothelial cell,sc
+Ependymal,sc
+Macrophage,sc
+Schwann cell,sc
+B-cell,sc
+T-cell,sc
+Pericyte,sc
+Monocyte,sc
+Smooth muscle cell,sc
+NK cell,sc
+Denervated MF,muscle
+Proliferating MF,muscle
+Fibrolast,muscle
+Type II MF,muscle
+Endothelial cell,muscle
+Macrophage,muscle
+Proliferating myeloid cell,muscle
+Monocyte,muscle
+Smooth muscle cell,muscle
+Type I MF,muscle
+Plasma cell,muscle
+Satellite cell,muscle
+Adipocyte,muscle
+Pericyte,muscle
+T-cell,muscle
+NK cell,muscle
+Mast cell,muscle
+Neutrophil,muscle
+B-cell,muscle

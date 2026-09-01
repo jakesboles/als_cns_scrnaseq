@@ -2,10 +2,10 @@
 #SBATCH --account b1042
 #SBATCH --partition genomics
 #SBATCH --job-name wgcna_single
-#SBATCH --array 1-TODO
+#SBATCH --array 1-67
 #SBATCH --nodes 1
 #SBATCH --ntasks-per-node 16
-#SBATCH --mem 96G
+#SBATCH --mem 200G
 #SBATCH --time 24:00:00
 #SBATCH --output /projects/b1169/boles/als_cns_scrnaseq/logs/%x_%A_%a.log
 #SBATCH --verbose
