@@ -98,7 +98,8 @@ message2 <- function(text){
   message(paste0(v1, text, v1))
 }
 
-setwd("/projects/b1169/boles/als_cns_scrnaseq")
+project_root <- "/projects/b1169/boles/als_cns_scrnaseq"
+setwd(project_root)
 
 theme_set(theme_cowplot())
 set.seed(256)
@@ -135,10 +136,17 @@ file <- str_replace_all(cell_type_target, " ", "_")
 message2(paste0("Processing ", cell_type_target, " (", tissue_file,
                 "), task ", task_id, "/", nrow(params)))
 
-data_dir <- paste0("data/wgcna_single/", tissue_file, "/", file, "/")
+# Absolute paths, unlike every other script's relative results_dir/
+# data_dir -- this script is the only one that temporarily setwd()s
+# elsewhere mid-run (see the ConstructNetwork() TOM-collision workaround
+# below), so a relative path here could silently resolve against the
+# wrong directory if anything ever reads/writes results_dir or data_dir
+# from inside that block.
+
+data_dir <- paste0(project_root, "/data/wgcna_single/", tissue_file, "/", file, "/")
 dir.create(data_dir, showWarnings = F, recursive = T)
 
-results_dir <- paste0("results/wgcna_single/", tissue_file, "/", file, "/")
+results_dir <- paste0(project_root, "/results/wgcna_single/", tissue_file, "/", file, "/")
 dir.create(results_dir, showWarnings = F, recursive = T)
 
 # Filter to this cell type before touching raw counts at all ----------------
@@ -270,7 +278,7 @@ tryCatch({
                           tom_name = file,
                           overwrite_tom = T)
 }, finally = {
-  setwd("/projects/b1169/boles/als_cns_scrnaseq")
+  setwd(project_root)
 })
 
 png(paste0(results_dir, "dendrogram.png"),
