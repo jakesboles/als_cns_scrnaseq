@@ -19,19 +19,30 @@
 #   Flag if something in hdWGCNA/hdWGCNA's ecosystem *was* silently
 #   depending on it (unlikely -- nothing else in the draft used a
 #   non-package function).
-# - Loads the whole tissue's cleaned, annotated object from
-#   17_obj_reassembly.R. Real raw counts come from
-#   data/06_obj_reassembly/bpcells (17's own saved bpcells_data holds
-#   normalized data, not counts -- the usual pipeline-wide gotcha, and
-#   MetacellsByGroups() below specifically needs to sum real counts to
-#   build metacells), plus a fresh NormalizeData(). 17's own already-fit
-#   data/17_obj_reassembly/<tissue>/harmony.rds is reattached directly
-#   rather than refit -- unlike 13/15/19, this script doesn't need a
-#   subset-specific integration: metacells are built by KNN within the
-#   whole tissue's existing embedding, then restricted to the target cell
-#   type via MetacellsByGroups()/SetDatExpr()'s own group.by/group_name
-#   arguments, matching the draft's own approach of running
-#   SetupForWGCNA() on the full tissue object rather than a subset.
+# - The draft (and hdWGCNA's own tutorial) builds metacells on the whole
+#   tissue object via MetacellsByGroups(), then restricts to one cell
+#   type only at SetDatExpr(). That means constructing and normalizing/
+#   scaling/PCA-ing/Harmony-integrating metacells for every OTHER cell
+#   type in the tissue too, just to discard them a few lines later --
+#   wasted work every single task, since this script already runs once
+#   per (cell_type, tissue) combination. Per the user, this script instead
+#   filters straight down to the target cell type's cells before ever
+#   touching raw counts: metadata is filtered to cell_type3 ==
+#   cell_type_target first, then raw counts are loaded already subset to
+#   just those barcodes (data/06_obj_reassembly/bpcells -- real raw
+#   counts, not 17_obj_reassembly.R's own saved bpcells_data, which holds
+#   normalized data; the usual pipeline-wide gotcha, and
+#   MetacellsByGroups() needs to sum real counts to build metacells).
+#   17's own already-fit data/17_obj_reassembly/<tissue>/harmony.rds is
+#   reattached (row-subset to the same cells) rather than refit -- unlike
+#   13/15/19, no fresh per-cell-type integration is needed, since Harmony
+#   correction across samples was already established for these cells in
+#   17 and subsetting an embedding doesn't change any individual cell's
+#   coordinates. One side effect worth knowing: ScaleData() below now
+#   scales within just this cell type's own variance instead of the
+#   whole tissue's -- arguably more appropriate for a cell-type-specific
+#   coexpression analysis anyway, but a real behavioral difference from
+#   the draft/tutorial approach if it matters for anything downstream.
 # - The draft's PredictedCellType/sample_ID/Batch/Group2 column aliasing
 #   is replaced with this project's actual column names (cell_type3,
 #   orig.ident, batch, group) throughout.
@@ -122,33 +133,40 @@ dir.create(data_dir, showWarnings = F, recursive = T)
 results_dir <- paste0("results/wgcna_single/", tissue_file, "/", file, "/")
 dir.create(results_dir, showWarnings = F, recursive = T)
 
-# Load the tissue object from 17_obj_reassembly.R ----------------------------
+# Filter to this cell type before touching raw counts at all ----------------
+# See header note above -- filtering the metadata first means raw_mat is
+# opened already subset to just this cell type's barcodes, and nothing
+# downstream ever processes the tissue's other cell types.
 
-message2("Reading in metadata, raw counts, and Harmony embedding")
+message2("Reading in metadata and filtering to this cell type")
 
 meta <- readRDS(paste0("data/17_obj_reassembly/", tissue_file, "/metadata.rds"))
-
-raw_mat <- open_matrix_dir("data/06_obj_reassembly/bpcells")
-raw_mat <- raw_mat[, rownames(meta)]
-
-obj <- CreateSeuratObject(counts = raw_mat, meta.data = meta, assay = "RNA")
-obj <- NormalizeData(obj)
-
-harmony <- readRDS(paste0("data/17_obj_reassembly/", tissue_file, "/harmony.rds"))
-obj[["harmony"]] <- harmony
+meta_sub <- meta[meta$cell_type3 == cell_type_target, ]
 
 # Skip cell types too sparsely represented for stable metacell construction -
-# See header note above.
+# Checked here, before loading raw counts, so an under-abundant cell type
+# fails fast and cheaply.
 
 min_cells <- 200 # change as needed
 
-n_cells <- sum(obj$cell_type3 == cell_type_target)
-if (n_cells < min_cells){
-  stop(paste0(cell_type_target, " (", tissue_file, ") has only ", n_cells,
-              " cells, below min_cells = ", min_cells, " -- too few for ",
-              "stable metacell construction. Adjust min_cells in this ",
-              "script if this cutoff is too strict."))
+if (nrow(meta_sub) < min_cells){
+  stop(paste0(cell_type_target, " (", tissue_file, ") has only ",
+              nrow(meta_sub), " cells, below min_cells = ", min_cells,
+              " -- too few for stable metacell construction. Adjust ",
+              "min_cells in this script if this cutoff is too strict."))
 }
+
+message2("Reading in raw counts and Harmony embedding")
+
+raw_mat <- open_matrix_dir("data/06_obj_reassembly/bpcells")
+raw_mat <- raw_mat[, rownames(meta_sub)]
+
+obj <- CreateSeuratObject(counts = raw_mat, meta.data = meta_sub, assay = "RNA")
+obj <- NormalizeData(obj)
+
+harmony <- readRDS(paste0("data/17_obj_reassembly/", tissue_file, "/harmony.rds"))
+harmony@cell.embeddings <- harmony@cell.embeddings[rownames(meta_sub), ]
+obj[["harmony"]] <- harmony
 
 obj <- ScaleData(obj)
 
@@ -156,16 +174,11 @@ obj <- ScaleData(obj)
 
 message2("Selecting genes expressed in at least 5% of this cell type")
 
-sub <- subset(obj, cell_type3 == cell_type_target)
-
-pe <- rowMeans(GetAssayData(sub, layer = "data", assay = "RNA") > 0)
+pe <- rowMeans(GetAssayData(obj, layer = "data", assay = "RNA") > 0)
 genes_keep <- names(pe)[pe > 0.05] # change this cutoff as needed
 
-# Set up hdWGCNA on the whole tissue object -----------------------------
-# Matches the draft's own approach -- metacells are built by KNN within
-# the whole tissue's existing Harmony embedding, then restricted to this
-# cell type via MetacellsByGroups()/SetDatExpr()'s group.by/group_name
-# arguments (see header note above), not by subsetting obj itself.
+# Set up hdWGCNA -------------------------------------------------------
+# obj is already filtered to just this cell type -- see header note above.
 
 message2("Setting up hdWGCNA")
 
@@ -176,9 +189,12 @@ obj <- SetupForWGCNA(obj,
 
 message2("Constructing metacells")
 
+# group.by is just orig.ident now (not c("cell_type3", "orig.ident") as
+# in the draft/tutorial) -- cell_type3 is constant across obj at this
+# point, so grouping by it too would be a no-op.
 obj <- MetacellsByGroups(
   seurat_obj = obj,
-  group.by = c("cell_type3", "orig.ident"),
+  group.by = "orig.ident",
   reduction = "harmony",
   k = 25, # change as needed
   max_shared = 10, # change as needed
@@ -264,13 +280,14 @@ names(gene_sets) <- module_names
 
 maxrank <- max(lengths(gene_sets))
 
-sub <- subset(obj, cell_type3 == cell_type_target)
-sub <- AddModuleScore_UCell(sub, features = gene_sets, maxRank = maxrank)
-sub <- SmoothKNN(sub,
+# No subset needed here (unlike the draft) -- obj already contains only
+# this cell type's cells.
+obj <- AddModuleScore_UCell(obj, features = gene_sets, maxRank = maxrank)
+obj <- SmoothKNN(obj,
                  signature.names = paste0(names(gene_sets), "_UCell"),
                  reduction = "harmony")
 
-scores <- sub@meta.data %>%
+scores <- obj@meta.data %>%
   dplyr::select(orig.ident, group, matches("_UCell_kNN$"))
 
 write.csv(scores,
