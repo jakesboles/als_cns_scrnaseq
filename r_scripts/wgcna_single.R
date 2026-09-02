@@ -58,6 +58,15 @@
 #   metacells. This project already hit an analogous "too few cells
 #   breaks the pipeline" issue with pseudobulk DESeq2 (deseq2.R); the same
 #   lesson is applied here proactively instead of waiting to hit it.
+# - obj[["RNA"]]$data is explicitly coerced to a real dgCMatrix right
+#   after NormalizeData() -- ModuleConnectivity() later broke deep inside
+#   hdWGCNA/WGCNA's corSparse() with "no method or default for coercing
+#   'RenameDims' to 'CsparseMatrix'" because BPCells' lazy matrix classes
+#   don't support that coercion, and hdWGCNA has no idea it's looking at
+#   a BPCells-backed layer. Same class of gotcha as this project's
+#   IntegrateLayers()/CCA history (see CLAUDE.md): a third-party package
+#   not written with BPCells in mind eventually needs a genuine in-memory
+#   matrix. Cheap here since obj is already subset to one cell type.
 # - ConstructNetwork() writes a temp .rda file to the working directory
 #   regardless of tom_outdir/tom_name (unfixed hdWGCNA bug,
 #   smorabit/hdWGCNA#182) -- since every task shares one setwd(), this is
@@ -179,6 +188,21 @@ raw_mat <- raw_mat[, rownames(meta_sub)]
 
 obj <- CreateSeuratObject(counts = raw_mat, meta.data = meta_sub, assay = "RNA")
 obj <- NormalizeData(obj)
+
+# Materialize the (now cell-type-scale, not tissue-scale) normalized
+# layer into a real in-memory dgCMatrix -- BPCells' lazy matrix classes
+# (e.g. "RenameDims", produced internally by dimname/subsetting
+# operations) don't implement the S4 coercion to CsparseMatrix that
+# ModuleConnectivity() needs for its corSparse()-based correlation step,
+# so it fails deep inside hdWGCNA with "no method or default for coercing
+# 'RenameDims' to 'CsparseMatrix'" if left BPCells-backed. Same class of
+# gotcha as the IntegrateLayers()/CCA fix in 09_*_integration.R's history
+# (see CLAUDE.md) -- a third-party package that isn't BPCells-aware
+# eventually needs a genuine in-memory matrix, not a lazy one. Doing this
+# now (right after NormalizeData(), before any hdWGCNA steps) means every
+# downstream step -- gene selection, SetupForWGCNA, ModuleConnectivity,
+# UCell scoring -- consistently sees a real matrix.
+obj[["RNA"]]$data <- as(obj[["RNA"]]$data, "dgCMatrix")
 
 harmony <- readRDS(paste0("data/17_obj_reassembly/", tissue_file, "/harmony.rds"))
 harmony@cell.embeddings <- harmony@cell.embeddings[rownames(meta_sub), ]
