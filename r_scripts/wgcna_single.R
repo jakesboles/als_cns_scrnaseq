@@ -179,6 +179,7 @@ raw_mat <- raw_mat[, rownames(meta_sub)]
 
 obj <- CreateSeuratObject(counts = raw_mat, meta.data = meta_sub, assay = "RNA")
 obj <- NormalizeData(obj)
+obj <- FindVariableFeatures(obj)
 
 harmony <- readRDS(paste0("data/17_obj_reassembly/", tissue_file, "/harmony.rds"))
 harmony@cell.embeddings <- harmony@cell.embeddings[rownames(meta_sub), ]
