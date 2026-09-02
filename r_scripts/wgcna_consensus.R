@@ -201,7 +201,7 @@ message2("Constructing metacells")
 # single script) but kept as ident.group.
 obj <- MetacellsByGroups(
   seurat_obj = obj,
-  group.by = c("orig.ident", "tissue"),
+  group.by = c("orig.ident", "tissue", "cell_type3"),
   reduction = "harmony",
   k = 25, # change as needed
   max_shared = 10, # change as needed
