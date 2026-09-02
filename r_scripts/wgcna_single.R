@@ -58,6 +58,17 @@
 #   metacells. This project already hit an analogous "too few cells
 #   breaks the pipeline" issue with pseudobulk DESeq2 (deseq2.R); the same
 #   lesson is applied here proactively instead of waiting to hit it.
+# - obj[["RNA"]]$data is explicitly coerced to a real dgCMatrix right
+#   before ModuleConnectivity() (not earlier) -- that's the one step that
+#   reaches back into the full single-cell "data" layer for a
+#   corSparse()-based correlation, which needs a genuine CsparseMatrix;
+#   BPCells' lazy matrix classes don't support that coercion, and hdWGCNA
+#   has no idea it might be looking at a BPCells-backed layer. Same class
+#   of gotcha as this project's IntegrateLayers()/CCA history (see
+#   CLAUDE.md). Deferred to right before the one call that actually needs
+#   it so gene selection, SetupForWGCNA(), and metacell construction keep
+#   the benefit of BPCells' lazy/streaming evaluation instead of paying
+#   the materialization cost earlier than necessary.
 # - ConstructNetwork() writes a temp .rda file to the working directory
 #   regardless of tom_outdir/tom_name (unfixed hdWGCNA bug,
 #   smorabit/hdWGCNA#182) -- since every task shares one setwd(), this is
@@ -293,6 +304,23 @@ message2("Computing module eigengenes and connectivity")
 
 obj <- SetActiveWGCNA(obj, file)
 obj <- ModuleEigengenes(obj, group.by.vars = "orig.ident")
+
+# ModuleConnectivity() (unlike everything before it) reaches back into
+# the full single-cell "data" layer for its corSparse()-based
+# correlation step, which needs a real CsparseMatrix -- BPCells' lazy
+# matrix classes (e.g. "RenameDims", produced internally by dimname/
+# subsetting operations) don't implement that coercion, and hdWGCNA has
+# no awareness it might be handed a BPCells-backed layer at all, so this
+# fails with "no method or default for coercing 'RenameDims' to
+# 'CsparseMatrix'" if left BPCells-backed. Same class of gotcha as this
+# project's IntegrateLayers()/CCA history (see CLAUDE.md). Materializing
+# only right here, not earlier (e.g. right after NormalizeData()), lets
+# gene selection, SetupForWGCNA(), and metacell construction above keep
+# running on the BPCells-backed layer and its usual streaming/lazy
+# efficiency -- nothing before this line actually needs a real
+# CsparseMatrix.
+obj[["RNA"]]$data <- as(obj[["RNA"]]$data, "dgCMatrix")
+
 obj <- ModuleConnectivity(obj, group_name = cell_type_target, group.by = "cell_type3")
 
 p <- PlotKMEs(obj, ncol = 4, text_size = 4)
