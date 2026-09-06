@@ -147,21 +147,26 @@ p_group <- plot_categorical(df,
 p_duration <- plot_continuous(df,
                 "disease_duration",
                 label = "Disease duration",
-                palette = "ggthemes::Orange")
+                palette = "ggthemes::Green")
 
 p_sc <- plot_categorical(df,
                          "sc",
                          label = "scRNAseq",
-                         palette = c("#2DC653")) + 
+                         palette = c("#00B4D8")) + 
   theme(legend.position = "none")
 
 p_ffpe <- plot_categorical(df,
                            "ffpe",
                            label = "Spatial biology",
-                           palette = c("#00B4D8")) + 
+                           palette = c("midnightblue")) + 
   theme(legend.position = "none")
 
-p <- p_group + p_c9 + p_age + p_duration + p_onset + p_sc + p_ffpe +
+p_sex <- plot_categorical(df,
+                 "sex",
+                 label = "Sex",
+                 palette = c("#DB5500", "#FFCFA4"))
+
+p <- p_group + p_c9 + p_age + p_sex + p_onset + p_duration + p_sc + p_ffpe +
   plot_layout(ncol = 1, widths = c(1.6, rep(1, 8)))
 
 results_dir <- "results/demographics_figure/"
@@ -170,7 +175,7 @@ dir.create(results_dir, showWarnings = F, recursive = T)
 ggsave(p,
        filename = paste0(results_dir, "demographics_heatmap.png"),
        units = "in", dpi = 600,
-       height = 2.5, width = 10)
+       height = 2.75, width = 10)
 
 write.csv(df,
           file = "tab_data/organized_metadata_for_plotting.csv",
