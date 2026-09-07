@@ -91,6 +91,7 @@ subclustering_targets <- list(
                       "Mast cell"))
 )
 
+fam <- c("tissue", "tissue", "tissue", "cell_type3", "cell_type3", "cell_type3")
 # Figure out which target this task handles ----------------------------
 
 task_id <- Sys.getenv("SLURM_ARRAY_TASK_ID")
@@ -209,6 +210,15 @@ for (group in c("cell_type3", "tissue", "batch", "orig.ident", "group")){
          height = 8, width = w)
 }
 
+# Write FindAllMarkers() output for grouping of interest ------------------
+
+Idents(obj) <- fam[task_id]
+
+markers <- FindAllMarkers(obj)
+
+write.csv(markers,
+          file = paste0(results_dir, "fam_output.csv"),
+          row.names = F)
 # Save metadata, integrated embedding, normalized expression, and UMAP -----
 
 message2("Saving metadata, count matrix, Harmony embedding, and UMAP")
