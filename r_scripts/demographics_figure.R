@@ -4,6 +4,7 @@ library(ggplot2)
 library(scales)
 library(janitor)
 library(patchwork)
+library(ggbeeswarm)
 
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
@@ -189,6 +190,118 @@ ggsave(p,
        units = "in", dpi = 600,
        height = 2.75, width = 9.5)
 
+df <- df %>% 
+  mutate(group = case_when(c9orf72_mutation == "Y" ~ "C9orf72-ALS",
+                           clinical_diagnosis == "Control" ~ "Control",
+                           .default = "sALS") %>% 
+           factor(levels = c("Control", "sALS", "C9orf72-ALS")))
+
 write.csv(df,
           file = "tab_data/organized_metadata_for_plotting.csv",
           row.names = F)
+
+# Age dot plot -----------------------------------------------------------
+
+kruskal.test(age_at_death ~ group,
+             data = df)
+
+anova(lm(age_at_death ~ group,
+      data = df))
+
+df %>%
+  ggplot(aes(x = group,
+             y = age_at_death)) + 
+  geom_quasirandom(aes(fill = group),
+                   shape = 21,
+                   show.legend = F,
+                   size = 4,
+                   alpha = 0.7) + 
+  stat_summary(fun = mean,
+               geom = "crossbar") +
+  stat_summary(fun.data = mean_se,
+               geom = "errorbar",
+               linewidth = 1.2,
+               width = 0.6) +
+  scale_fill_manual(values = c("#b8b0a8", "#CC00FF", "#0CAA00")) + 
+  labs(y = "Age (yr)") +
+  theme_linedraw(base_size = 12) +
+  theme(axis.title.x = element_blank())
+ggsave(filename = paste0(results_dir, "age_dotplot.png"),
+       units = "in", dpi = 600,
+       height = 2.75, width = 3)
+
+# Disease duration dot plot -----------------------------------------------
+
+df2 <- df %>% 
+  filter(group != "Control")
+
+wilcox.test(disease_duration ~ group,
+            data = df2)
+
+df2 %>%
+  ggplot(aes(x = group,
+             y = disease_duration)) + 
+  geom_quasirandom(aes(fill = group),
+                   shape = 21,
+                   show.legend = F,
+                   size = 4,
+                   alpha = 0.7) + 
+  stat_summary(fun = mean,
+               geom = "crossbar") +
+  stat_summary(fun.data = mean_se,
+               geom = "errorbar",
+               linewidth = 1.2,
+               width = 0.6) +
+  scale_fill_manual(values = c("#CC00FF", "#0CAA00")) + 
+  labs(y = "Disease duration (yr)") +
+  theme_linedraw(base_size = 12) +
+  theme(axis.title.x = element_blank())
+ggsave(filename = paste0(results_dir, "disease_duration_dotplot.png"),
+       units = "in", dpi = 600,
+       height = 2.75, width = 2)
+
+# Sex figure --------------------------------------------------------------
+
+fisher.test(df$group, df$sex)
+
+df %>% 
+  group_by(group, sex) %>%
+  summarize(n = n()) %>%
+  ggplot(aes(x = group,
+             y = n)) + 
+  geom_col(aes(fill = sex),
+           color = "black") +
+  scale_fill_manual(values = c("#DB5500", "#FFCFA4")) + 
+  scale_y_continuous(expand = c(0, 0)) +
+  labs(y = "Count",
+       fill = "Sex") +
+  theme_linedraw(base_size = 12) +
+  theme(axis.title.x = element_blank())
+ggsave(filename = paste0(results_dir, "sex_barchart.png"),
+       units = "in", dpi = 600,
+       height = 2.75, width = 4)
+
+# Site of onset figure ----------------------------------------------------
+
+df2 <- df %>% 
+  filter(group != "Control")
+
+chisq.test(df2$group, df2$onset_site)
+
+df2 %>% 
+  group_by(group, onset_site) %>% 
+  summarize(n = n()) %>%
+  ggplot(aes(x = group,
+             y = n)) + 
+  geom_col(aes(fill = onset_site),
+           color = "black") +
+  scale_fill_manual(values = c("#FFD60A", "#8C7A1E", "#F0DE7D"),
+                    na.value = "white") + 
+  scale_y_continuous(expand = c(0, 0)) +
+  labs(y = "Count",
+       fill = "Site of\nonset") +
+  theme_linedraw(base_size = 12) +
+  theme(axis.title.x = element_blank())
+ggsave(filename = paste0(results_dir, "onset_site_barchart.png"),
+       units = "in", dpi = 600,
+       height = 2.75, width = 3.5)
