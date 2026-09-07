@@ -208,7 +208,7 @@ milo <- makeNhoods(milo,
                    k = 15, # change as needed
                    d = 15,
                    refined = TRUE,
-                   reduced_dims = "harmony")
+                   reduced_dims = "HARMONY")
 
 p <- plotNhoodSizeHist(milo)
 ggsave(p,
@@ -223,7 +223,7 @@ milo <- countCells(milo,
 
 milo <- calcNhoodDistance(milo,
                           d = 15,
-                          reduced.dim = "harmony")
+                          reduced.dim = "HARMONY")
 
 # Populate the neighborhood graph for downstream plotting -----------------
 # The sample script never called this -- see header note above.
@@ -280,7 +280,8 @@ for (tissue_title in tissues_present){
                              design.df = design,
                              model.contrasts = "groupsALS - groupControl",
                              fdr.weighting = "graph-overlap",
-                             norm.method = "TMM")
+                             norm.method = "TMM",
+                             reduced.dim = "HARMONY")
 
   write.csv(sals_results,
             file = paste0(results_dir, "sALS_vs_Control_", tissue_file,
@@ -294,7 +295,8 @@ for (tissue_title in tissues_present){
                            design.df = design,
                            model.contrasts = "groupC9orf72 - groupControl",
                            fdr.weighting = "graph-overlap",
-                           norm.method = "TMM")
+                           norm.method = "TMM",
+                           reduced.dim = "HARMONY")
 
   write.csv(c9_results,
             file = paste0(results_dir, "C9orf72_vs_Control_", tissue_file,

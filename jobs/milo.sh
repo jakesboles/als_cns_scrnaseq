@@ -2,7 +2,7 @@
 #SBATCH --account b1042
 #SBATCH --partition genomics
 #SBATCH --job-name milo
-#SBATCH --array 1-6
+#SBATCH --array 2,3,6
 #SBATCH --nodes 1
 #SBATCH --ntasks-per-node 8
 #SBATCH --mem 64G

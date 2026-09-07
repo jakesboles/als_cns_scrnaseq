@@ -89,10 +89,10 @@ df %>%
                names_to = "type") %>%
   mutate(tissue = factor(tissue,
                          levels = c("brain", "sc", "muscle"),
-                         labels = c("Motor cortex", "Spinal cord", "Skeletal muscle")),
+                         labels = c("Motor cortex", "Cervical spinal cord", "Skeletal muscle")),
          type = factor(type, 
                        levels = c("sals_only", "c9_only", "shared"),
-                       labels = c("sALS only", "C9-ALS only", "Shared"))) %>%
+                       labels = c("sALS only", "C9orf72-ALS only", "Shared"))) %>%
   ggplot(aes(x = order,
              y = n)) + 
   geom_bar(aes(fill = type),
@@ -101,20 +101,22 @@ df %>%
            linewidth = 0.4) + 
   facet_wrap(. ~ tissue, ncol = 3,
              scales = "free_x") +
-  scale_fill_manual(values = c("chartreuse3", "magenta3", "darkslategrey")) +
+  scale_fill_manual(values = c("#0CAA00", "#CC00FF", "darkslategrey")) +
   scale_y_continuous(expand = c(0, 0)) +
   scale_x_discrete(
     labels = function(x) str_split_i(x, "_", i = 1)    # remove everything through the last “_”
   ) +
   ylab("# DEGs") + 
   labs(fill = "DEGs versus\ncontrol in:") +
-  theme_linedraw(base_size = 16) +
+  theme_linedraw(base_size = 12) +
   theme(axis.title.x = element_blank(),
         # axis.title.y = element_text(face = "bold"),
-        axis.text = element_text(color = "black", size = 14),
+        axis.text = element_text(color = "black"),
         # axis.text.x = element_text(angle = , hjust = 1, vjust = 1),
         # axis.ticks.y = element_blank(),
         axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
-        plot.title = element_text(size = 20, hjust = 0.5),
-        strip.background = element_rect(fill = "white", color = "black"),
-        strip.text = element_text(face = "bold", size = 20, color = "black"))
+        strip.background = element_rect(fill = "gray", color = "black"),
+        strip.text = element_text(face = "bold", color = "black"))
+ggsave(filename = paste0("figures/deseq2_3way_results.png"),
+       units = "in", dpi = 600,
+       height = 5, width = 10)
