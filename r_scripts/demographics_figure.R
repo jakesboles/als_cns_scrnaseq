@@ -50,8 +50,8 @@ base_theme <- function(show_y_text = FALSE) {
       # plot.title     = element_text(size = 8, angle = 90, hjust = 0, vjust = 0.5),
       # plot.title.position = "plot",
       legend.key.size = unit(0.35, "cm"),
-      legend.text    = element_text(size = 9),
-      legend.title   = element_text(size = 12)
+      legend.text    = element_text(size = 8),
+      legend.title   = element_text(size = 10)
     )
 }
 
@@ -80,9 +80,9 @@ plot_continuous <- function(data,
                    fill = .data[[var]])) +
     geom_tile(color = "black", 
               linewidth = 0.4) +
-    labs(y = label) +
-    base_theme(show_y_text) + 
-    theme(legend.title = element_blank())
+    labs(y = label,
+         fill = label) +
+    base_theme(show_y_text)
   
   p <- add_na_strike(p, data, var)
   
@@ -105,18 +105,20 @@ plot_categorical <- function(data,
                         x = case_number, 
                         fill = .data[[var]])) +
     geom_tile(color = "black", linewidth = 0.4) +
-    labs(y = label) +
-    base_theme(show_y_text) + 
-    theme(legend.title = element_blank())
+    labs(y = label,
+         fill = label) +
+    base_theme(show_y_text)
   
   p <- add_na_strike(p, data, var)
   
   if (!is.null(palette)) {
     p + scale_fill_manual(values = palette, name = label, na.value = "white",
-                          na.translate = F)
+                          na.translate = F,
+                          guide = guide_legend(ncol = 1))
   } else {
     p + scale_fill_brewer(palette = "Set2", name = label, na.value = "white",
-                          na.translate = F)
+                          na.translate = F,
+                          guide = guide_legend(ncol = 1))
   }
 }
 
@@ -167,7 +169,13 @@ p_sex <- plot_categorical(df,
                  palette = c("#DB5500", "#FFCFA4"))
 
 p <- p_group + p_c9 + p_age + p_sex + p_onset + p_duration + p_sc + p_ffpe +
-  plot_layout(ncol = 1, widths = c(1.6, rep(1, 8)))
+  plot_layout(ncol = 1, widths = c(1.6, rep(1, 8))) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom",
+        legend.box = "horizontal",       # or "vertical" if it wraps awkwardly
+        legend.spacing.x = unit(0.3, "cm"),
+        legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
+        legend.title.position = "top")
 
 results_dir <- "results/demographics_figure/"
 dir.create(results_dir, showWarnings = F, recursive = T)
@@ -175,7 +183,7 @@ dir.create(results_dir, showWarnings = F, recursive = T)
 ggsave(p,
        filename = paste0(results_dir, "demographics_heatmap.png"),
        units = "in", dpi = 600,
-       height = 2.75, width = 10)
+       height = 2.75, width = 9.5)
 
 write.csv(df,
           file = "tab_data/organized_metadata_for_plotting.csv",
