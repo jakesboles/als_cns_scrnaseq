@@ -18,12 +18,11 @@
 # milo.R will fail fast with a clear error if these fall out of sync.
 #
 # --mem/--time are an unmeasured estimate -- MiloR's neighborhood testing
-# doesn't touch raw expression data and works on much smaller objects than
-# most of this project's other array jobs (one subclustered, single- or
-# few-tissue population at a time, and each tissue within a task is
-# processed one at a time, not all at once), so sized well below the
-# heavier integration/WGCNA jobs as a starting point, not a measurement.
-# "myeloid" (3 tissues per task) is likely the slowest/highest-memory
+# doesn't touch raw expression data, so sized well below the heavier
+# integration/WGCNA jobs as a starting point, not a measurement. The
+# neighbor graph and neighborhoods are now built once per task on the
+# full cross-tissue object (not per-tissue subsets), so "myeloid" (3
+# tissues combined into one object) is likely the slowest/highest-memory
 # target here. Check `seff <jobid>_<taskid>` once these run and adjust.
 
 module load R/4.4.0
