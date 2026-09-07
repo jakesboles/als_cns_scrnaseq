@@ -7,6 +7,9 @@ library(patchwork)
 
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
+results_dir <- "figures/"
+dir.create(results_dir, showWarnings = F, recursive = T)
+
 df <- read_csv("tab_data/target_als_demographics_compiled.csv")
 
 df <- clean_names(df)
@@ -20,10 +23,12 @@ df <- df %>%
 
 df <- df %>% 
   mutate(ffpe = case_when(case_number == "GBB-19-13" ~ "Y",
-                             str_detect(case_number, "AU") ~ NA,
-                             .default = "Y"),
-         sc = case_when(case_number == "GBB-19-13" ~ NA,
-                        .default = "Y"))
+                             str_detect(case_number, "AU") ~ "N",
+                             .default = "Y") %>% 
+           factor(levels = c("Y", "N")),
+         sc = case_when(case_number == "GBB-19-13" ~ "N",
+                        .default = "Y") %>% 
+           factor(levels = c("Y", "N")))
 
 unique(df$site_of_sx_onset)
 
@@ -123,7 +128,9 @@ plot_categorical <- function(data,
 }
 
 df <- df %>% 
-  arrange(clinical_diagnosis, c9orf72_mutation) %>%
+  mutate(clinical_diagnosis = factor(clinical_diagnosis,
+                                     levels = c("Control", "ALS", "ALS-FTD"))) %>%
+  arrange(clinical_diagnosis, desc(c9orf72_mutation)) %>%
   mutate(case_number = fct_inorder(case_number))
 
 p_c9 <- plot_categorical(df,
@@ -144,7 +151,7 @@ p_age <- plot_continuous(df,
 p_group <- plot_categorical(df,
                  "clinical_diagnosis",
                  label = "Group",
-                 palette = c("#6a3d9a", "#c3a6e1", "#b8b0a8"))
+                 palette = c("#b8b0a8", "#6a3d9a", "#c3a6e1"))
 
 p_duration <- plot_continuous(df,
                 "disease_duration",
@@ -154,13 +161,13 @@ p_duration <- plot_continuous(df,
 p_sc <- plot_categorical(df,
                          "sc",
                          label = "scRNAseq",
-                         palette = c("#00B4D8")) + 
+                         palette = c("#00B4D8", "#E5E1DC")) + 
   theme(legend.position = "none")
 
 p_ffpe <- plot_categorical(df,
                            "ffpe",
                            label = "Spatial biology",
-                           palette = c("midnightblue")) + 
+                           palette = c("midnightblue", "#E5E1DC")) + 
   theme(legend.position = "none")
 
 p_sex <- plot_categorical(df,
@@ -176,9 +183,6 @@ p <- p_group + p_c9 + p_age + p_sex + p_onset + p_duration + p_sc + p_ffpe +
         legend.spacing.x = unit(0.3, "cm"),
         legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
         legend.title.position = "top")
-
-results_dir <- "results/demographics_figure/"
-dir.create(results_dir, showWarnings = F, recursive = T)
 
 ggsave(p,
        filename = paste0(results_dir, "demographics_heatmap.png"),
