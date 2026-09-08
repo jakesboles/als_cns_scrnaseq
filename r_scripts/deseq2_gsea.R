@@ -66,10 +66,12 @@ for (i in c("brain", "sc", "muscle")) {
     c9_rank <- get_ranked_genes(c9)
     
     sals_res <- GSEA(sals_rank,
-                     TERM2GENE = t2g)
+                     TERM2GENE = t2g,
+                     pvalueCutoff = 1)
     
     c9_res <- GSEA(c9_rank,
-                   TERM2GENE = t2g)
+                   TERM2GENE = t2g,
+                   pvalueCutoff = 1)
     
     if (sals_res@result$p.adjust %>% min() < 0.05){
       p <- dotplot(sals_res,

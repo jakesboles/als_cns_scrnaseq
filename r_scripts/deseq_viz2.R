@@ -132,8 +132,19 @@ for (i in seq_along(list)){
     dplyr::rename(!!sym(col) := "x")
 }
 
-pdf(file = paste0(plots_dir, "microglia_degs_upset.pdf"),
-    height = 6, width = 7)
+intersect_df <- intersect_df %>%
+  mutate(
+    highlight_group = case_when(
+      `C9-ALS_brain` & `C9-ALS_sc` & !sALS_brain & !sALS_sc ~ "C9orf72-ALS shared",
+      `C9-ALS_brain` & sALS_brain & !`C9-ALS_sc` & !sALS_sc ~ "Motor cortex shared",
+      `C9-ALS_sc` & sALS_sc & !`C9-ALS_brain` & !sALS_brain ~ "Cervical spinal cord shared",
+      TRUE ~ "Other"
+    )
+  )
+
+png(file = paste0(plots_dir, "microglia_degs_upset.png"),
+    height = 6, width = 7,
+    units = "in", res = 600)
 
 upset(intersect_df, list_names,
       set_sizes = F,
@@ -148,39 +159,52 @@ upset(intersect_df, list_names,
         "sALS_sc" = "sALS\nCervical spinal cord"
       )),
       matrix = (intersection_matrix(
-        geom = geom_point(shape = 18, size = 10),
+        geom = geom_point(shape = 19, size = 10),
         segment = geom_segment(linewidth = 1.5),
         outline_color = list(active = "white", inactive = "white")
       )),
       base_annotations = list(
-        'Intersection size' = intersection_size(text = list(size = 0)) +
+        'Intersection size' = intersection_size(
+          text = list(size = 0),
+          mapping = aes(fill = highlight_group)
+        ) +
+          scale_fill_manual(
+            values = c(
+              "C9orf72-ALS shared" = "#CC00FF",
+              "Motor cortex shared" = "#0073C2",
+              "Cervical spinal cord shared" = "#EFC000",
+              "Other" = "grey35"
+            ),
+            guide = "none"
+          ) +
           scale_y_continuous(expand = c(0, 0)) +
           ylab("# DEGs")
       ),
       queries = list(
         upset_query(intersect = c("C9-ALS_brain", "C9-ALS_sc"),
-                    color = "magenta3",
-                    fill = "magenta3"),
+                    color = "#CC00FF", fill = "#CC00FF",
+                    only_components = "intersections_matrix"),
         upset_query(intersect = c("C9-ALS_brain", "sALS_brain"),
-                    color = "#0073C2",
-                    fill = "#0073C2"),
+                    color = "#0073C2", fill = "#0073C2",
+                    only_components = "intersections_matrix"),
         upset_query(intersect = c("C9-ALS_sc", "sALS_sc"),
-                    color = "#EFC000",
-                    fill = "#EFC000")
+                    color = "#EFC000", fill = "#EFC000",
+                    only_components = "intersections_matrix")
       ),
       theme = upset_modify_themes(
         list(
           'Intersection size' = theme(axis.text = element_text(color = "black", size = 16),
                                       axis.title = element_text(size = 20),
                                       axis.ticks.y = element_line(),
-                                      panel.border = element_rect(color = "black", fill = "transparent")),
+                                      panel.border = element_rect(color = "black", fill = "transparent"),
+                                      panel.grid = element_line(color = "gray70")),
           'intersections_matrix' = theme(axis.text = element_text(color = "black", size = 16),
                                          axis.title = element_blank())
         )
       )
 ) +
   ggtitle("Microglia DEGs") +
-  theme(plot.title = element_text(hjust = 0.5, size = 20))
+  theme(plot.title = element_text(hjust = 0.5, size = 20, face = "plain"))
 
 dev.off()
 
@@ -234,12 +258,34 @@ plot_fc_scatter <- function(tissue_1, contrast_1, tissue_2, contrast_2,
     geom_point() +
     geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
     geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
-    labs(x = paste0("log2FC (", label_1, ")"),
-        y = paste0("log2FC (", label_2, ")"),
-        color = "Significant in") +
-    theme_bw(base_size = 12) +
+    labs(x = paste0("log2(fold change) in ", label_1),
+        y = paste0("log2(fold change) in ", label_2),
+        color = "DEGs versus\ncontrol in:") +
+    theme_linedraw(base_size = 12) +
     theme(axis.text = element_text(color = "black"))
 }
+
+plot_fc_scatter("sc", "C9orf72_vs_Control",
+                "sc", "sALS_vs_Control",
+                label_1 = "C9orf72",
+                label_2 = "sALS") + 
+  scale_color_manual(values = c("darkslategrey", "#0CAA00", "#CC00FF")) + 
+  ggtitle("C9orf72-ALS vs sALS DEGs\nin cervical spinal cord") + 
+  theme(plot.title = element_text(hjust = 0.5))
+ggsave(filename = paste0(plots_dir, "microglia_sc_c9_vs_sals_multivolcano.png"),
+       units = "in", dpi = 600,
+       height = 4, width = 4.5)
+
+plot_fc_scatter("brain", "C9orf72_vs_Control",
+                "sc", "C9orf72_vs_Control",
+                label_2 = "Cervical spinal cord",
+                label_1 = "Motor cortex") + 
+  scale_color_manual(values = c("darkgreen", "#EFC000", "#0073C2")) + 
+  ggtitle("Motor cortex vs cervical spinal\ncord DEGs in C9orf72-ALS") + 
+  theme(plot.title = element_text(hjust = 0.5))
+ggsave(filename = paste0(plots_dir, "microglia_c9_br_vs_sc_multivolcano.png"),
+       units = "in", dpi = 600,
+       height = 4, width = 5)
 
 # Example matching the user's own comparison:
 # p <- plot_fc_scatter("brain", "C9orf72_vs_Control", "sc", "C9orf72_vs_Control",

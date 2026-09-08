@@ -34,7 +34,7 @@ df %>%
   facet_wrap(. ~ tissue,
              ncol = 1) + 
   geom_violin(aes(fill = group)) +
-  scale_fill_manual(values = c("#b8b0a8", "#CC00FF", "#0CAA00")) + 
+  scale_fill_manual(values = c("#b8b0a8", "#0CAA00", "#CC00FF")) + 
   labs(y = "# UMIs per cell") +
   scale_y_log10() + 
   theme
@@ -50,7 +50,7 @@ df %>%
   facet_wrap(. ~ tissue,
              ncol = 1) + 
   geom_violin(aes(fill = group)) +
-  scale_fill_manual(values = c("#b8b0a8", "#CC00FF", "#0CAA00")) + 
+  scale_fill_manual(values = c("#b8b0a8", "#0CAA00", "#CC00FF")) + 
   labs(y = "# genes per cell") +
   scale_y_log10() + 
   theme
@@ -66,7 +66,7 @@ df %>%
   facet_wrap(. ~ tissue,
              ncol = 1) + 
   geom_violin(aes(fill = group)) +
-  scale_fill_manual(values = c("#b8b0a8", "#CC00FF", "#0CAA00")) + 
+  scale_fill_manual(values = c("#b8b0a8", "#0CAA00", "#CC00FF")) + 
   labs(y = "% mitochondrial genes per cell") +
   theme
 ggsave(filename = paste0(plots_dir, "mito.png"),

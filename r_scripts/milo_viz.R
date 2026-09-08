@@ -47,6 +47,8 @@ target_name <- "microglia" # change this to switch targets
 
 data_dir <- paste0("data/milo/", target_name, "/")
 
+results_dir <- paste0("results/milo/", target_name, "/")
+
 # Load the Milo object and reattach a UMAP for plotting ---------------------
 # milo.R's saved Milo object has no UMAP reduction -- see header note
 # above.
@@ -154,3 +156,47 @@ for (tissue_title in tissues_present){
 # $layout (harmonyumap_1/2, logFC, size), $min_logfc/$max_logfc/$breaks
 # for scale_color_gradientn(), and $tissue/$contrast for titling/
 # faceting.
+
+min_logfc <- vector(mode = "numeric", length = 4)
+max_logfc <- vector(mode = "numeric", length = 4)
+
+for (i in seq_along(plot_data)){
+  min_logfc[i] <- plot_data[[i]]$min_logfc
+  max_logfc[i] <- plot_data[[i]]$max_logfc
+}
+
+min_logfc <- min(min_logfc)
+max_logfc <- max(max_logfc)
+
+breaks <- c(min_logfc, min_logfc/2, 0 , max_logfc/2, max_logfc)
+
+p_list <- list()
+
+for (i in seq_along(plot_data)){
+  p_list[[i]] <- ggplot(plot_data[[i]]$layout,
+                   aes(x = harmonyumap_1,
+                       y = harmonyumap_2)) + 
+    geom_point(aes(color = logFC)) + 
+    scale_color_gradientn(
+      colours = cols,
+      values = rescale(breaks, from = c(min_logfc, max_logfc)),
+      limits = c(min_logfc, max_logfc),
+      oob = squish) + 
+    labs(y = "UMAP 2",
+         x = "UMAP 1",
+         color = "log2FC\nin ALS") +
+    theme(axis.text = element_blank(),
+          axis.ticks = element_blank())
+  
+}
+
+wrap_plots(p_list[[3]], p_list[[4]], p_list[[1]], p_list[[2]],
+           ncol = 2,
+           guides = "collect")
+ggsave(filename = paste0(results_dir, "milo_lfc_umaps.png"),
+       units = "in", dpi = 600,
+       height = 8, width = 9)
+
+for (i in seq_along(plot_data)){
+  message(names(plot_data)[i])
+}
