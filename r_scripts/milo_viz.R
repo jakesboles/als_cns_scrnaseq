@@ -1,47 +1,36 @@
-# Visualizes milo.R's differential neighborhood abundance results as
-# UMAPs colored by log fold-change, one plot per (tissue, disease-group
-# contrast) combination for each 19_subclustering3.R target. The
-# neighborhoods/graph/embedding plotted are the same shared, cross-tissue
-# ones milo.R built once per target -- only the logFC coloring changes
-# per plot, since that's what actually varies per tissue's testNhoods()
-# result. This is deliberate: the same neighborhood, in the same spot on
-# the plot, can be visually compared across tissues/groups to see whether
-# an abundance change is shared or tissue-specific, matching milo.R's own
-# design rationale. Runs as a SLURM job array (see jobs/milo_viz.sh), one
-# task per subdirectory of data/milo/ -- discovered at runtime, matching
-# milo.R's own convention.
+# Assembles the plotting inputs for milo.R's differential neighborhood
+# abundance results as UMAPs colored by log fold-change -- one entry per
+# (tissue, disease-group contrast) combination available for a given
+# 19_subclustering3.R target, so all of them can be plotted together
+# (e.g. with patchwork) and compared side by side. Interactive script,
+# not a SLURM job -- run by hand, changing target_name as needed.
 #
-# Reworked from the user's pushed code chunk (meant to run directly after
-# milo.R's own code, still in the same R session -- milo/c9_results were
-# assumed already in memory). Design notes:
-# - Loads milo.R's saved data/milo/<target>/milo_obj.rds directly, since
-#   this runs as its own script/session.
+# The neighborhoods/graph/embedding are the same shared, cross-tissue
+# ones milo.R built once per target -- only the logFC coloring changes
+# per entry, since that's what actually varies per tissue's testNhoods()
+# result. This lets the same neighborhood, in the same spot on the plot,
+# be visually compared across tissues/groups to see whether an abundance
+# change is shared or tissue-specific, matching milo.R's own design
+# rationale.
+#
+# This only assembles plotting inputs (plot_data below) -- it does not
+# build or save any ggplot object. Each plot_data[[...]] entry has
+# everything needed to build one panel (layout, min_logfc, max_logfc,
+# breaks, tissue, contrast) for however you want to lay it out.
+#
+# Design notes (carried over from the earlier array-job version of this
+# script, still relevant):
 # - milo.R's saved Milo object has no UMAP reduction attached (it only
-#   attaches "harmony" for neighborhood construction -- see milo.R's
-#   header). 19_subclustering3.R's own saved harmony_umap.rds is loaded
-#   and attached here instead of the old project's "INTEGRATED_UMAP2",
-#   which doesn't exist in this pipeline.
-# - Loops over every (tissue, contrast) combination actually present in
-#   results/milo/<target>/ (skipped, not fatal, if missing -- milo.R's
-#   min_donors_per_group check can skip a tissue entirely), covering both
-#   contrasts and every tissue found -- the user's pushed chunk only
-#   demonstrated this for one contrast (c9_results) in what was implicitly
-#   a single tissue, per their "tissue- and disease-group-specific"
-#   request.
-# - `size` (per-neighborhood cell count) was computed in the pushed chunk
-#   but never actually used in the final ggplot() call -- added
-#   aes(size = size) to the plot here, since computing it only makes
-#   sense if it's meant to be plotted; flagging this rather than silently
-#   leaving it as dead code.
-# - min_logfc/max_logfc/breaks are recomputed for each (tissue, contrast)
-#   plot, not once globally, since the logFC range differs per test.
-# - `size` itself doesn't depend on tissue/contrast (same neighborhoods,
-#   same sizes throughout), so it's computed once per target rather than
-#   recomputed in the inner loop.
-# - Output goes to results/milo_viz/<target>/, matching this project's
-#   usual per-script results/ convention, not figures/ -- this produces
-#   several exploratory plots per target (up to 3 tissues x 2 contrasts),
-#   not one curated figure like deseq_viz2.R's upset plot.
+#   attaches "harmony" for neighborhood construction) --
+#   19_subclustering3.R's own saved harmony_umap.rds is loaded and
+#   attached here instead.
+# - Only combinations with an actual results CSV are included --
+#   milo.R's min_donors_per_group check can skip a tissue entirely, so a
+#   missing file is a real possibility, not a typo.
+# - `size` (per-neighborhood cell count) doesn't depend on tissue/
+#   contrast, so it's computed once, not per combination.
+# - min_logfc/max_logfc/breaks are computed per combination, since the
+#   logFC range differs per test.
 
 suppressMessages({
   library(Seurat)
@@ -52,50 +41,17 @@ suppressMessages({
   library(scales)
 })
 
-message2 <- function(text){
-  v1 <- paste(rep("~", 15),
-              collapse = "")
-  message(paste0(v1, text, v1))
-}
+setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
-project_root <- "/projects/b1169/boles/als_cns_scrnaseq"
-setwd(project_root)
-
-# Figure out which target this task handles ------------------------------
-# Discovered from data/milo/ (milo.R's own output), matching milo.R's own
-# convention.
-
-targets <- sort(list.dirs("data/milo", recursive = F, full.names = F))
-
-task_id <- Sys.getenv("SLURM_ARRAY_TASK_ID")
-if (task_id == ""){
-  stop("SLURM_ARRAY_TASK_ID is not set -- this script is meant to run as a ",
-       "SLURM job array (see jobs/milo_viz.sh), one task per subdirectory ",
-       "of data/milo/, not as a standalone Rscript call.")
-}
-task_id <- as.integer(task_id)
-
-if (task_id < 1 | task_id > length(targets)){
-  stop(paste0("SLURM_ARRAY_TASK_ID (", task_id, ") is out of range for ",
-              length(targets), " targets found in data/milo/ -- check the ",
-              "--array range in jobs/milo_viz.sh."))
-}
-
-target_name <- targets[task_id]
-
-message2(paste0("Processing ", target_name, ", task ", task_id, "/",
-                length(targets)))
+target_name <- "microglia" # change this to switch targets
 
 data_dir <- paste0("data/milo/", target_name, "/")
-
-results_dir <- paste0(project_root, "/results/milo_viz/", target_name, "/")
-dir.create(results_dir, showWarnings = F, recursive = T)
 
 # Load the Milo object and reattach a UMAP for plotting ---------------------
 # milo.R's saved Milo object has no UMAP reduction -- see header note
 # above.
 
-message2("Reading in Milo object and UMAP embedding")
+message("Reading in Milo object and UMAP embedding")
 
 milo <- readRDS(paste0(data_dir, "milo_obj.rds"))
 
@@ -112,6 +68,8 @@ colData(milo)[unlist(nhoodIndex(milo)), "size"] <-
 tissues_present <- sort(unique(as.character(colData(milo)$tissue)))
 contrasts <- c("sALS_vs_Control", "C9orf72_vs_Control")
 
+# Color palette shared across every panel, for you to reuse in your own
+# scale_color_gradientn() calls.
 cols <- c(
   "#7F0000",  # dark red
   "#FF3030",  # bright red
@@ -120,29 +78,32 @@ cols <- c(
   "#08306B"   # dark blue
 )
 
+# Assemble one plotting-input entry per (tissue, contrast) -----------------
+
+plot_data <- list()
+
 for (tissue_title in tissues_present){
 
   tissue_file <- str_replace_all(tissue_title, " ", "_")
 
   for (contrast in contrasts){
 
-    results_csv <- paste0(project_root, "/results/milo/", target_name, "/",
-                          contrast, "_", tissue_file, "_nhood_results.csv")
+    results_csv <- paste0("results/milo/", target_name, "/", contrast, "_",
+                          tissue_file, "_nhood_results.csv")
 
     if (!file.exists(results_csv)){
-      message2(paste0("Skipping ", target_name, " -- ", contrast, " (",
-                      tissue_title, ") -- no results CSV found (likely ",
-                      "skipped by milo.R's min_donors_per_group check)."))
+      message(paste0("Skipping ", target_name, " -- ", contrast, " (",
+                     tissue_title, ") -- no results CSV found (likely ",
+                     "skipped by milo.R's min_donors_per_group check)."))
       next
     }
 
-    message2(paste0("Plotting ", target_name, " -- ", contrast, " (",
-                    tissue_title, ")"))
+    message(paste0("Assembling ", target_name, " -- ", contrast, " (",
+                   tissue_title, ")"))
 
     signif_res <- read.csv(results_csv)
 
-    # Handle untested neighborhoods and zero out non-significant logFC --
-    # same as the user's pushed chunk.
+    # Handle untested neighborhoods and zero out non-significant logFC.
     signif_res$SpatialFDR[is.na(signif_res$SpatialFDR)] <- 1
     signif_res[signif_res$SpatialFDR >= 0.05, "logFC"] <- 0
 
@@ -174,26 +135,22 @@ for (tissue_title in tissues_present){
     min_logfc <- min(signif_res$logFC)
     breaks <- c(min_logfc, min_logfc / 2, 0, max_logfc / 2, max_logfc)
 
-    p <- ggplot(layout,
-               aes(x = harmonyumap_1,
-                   y = harmonyumap_2)) +
-      geom_point(aes(color = logFC, size = size)) +
-      scale_color_gradientn(
-        colours = cols,
-        values = rescale(breaks, from = c(min_logfc, max_logfc)),
-        limits = c(min_logfc, max_logfc),
-        oob = squish
-      ) +
-      ggtitle(paste0(target_name, ": ", contrast, " (", tissue_title, ")")) +
-      theme_bw(base_size = 14) +
-      theme(axis.text = element_text(color = "black"),
-            plot.title = element_text(hjust = 0.5))
+    combo_name <- paste0(tissue_file, "_", contrast)
 
-    ggsave(p,
-           filename = paste0(results_dir, contrast, "_", tissue_file,
-                            "_nhood_umap.png"),
-           units = "in", dpi = 300,
-           height = 6, width = 7)
+    plot_data[[combo_name]] <- list(
+      tissue = tissue_title,
+      contrast = contrast,
+      layout = layout,
+      min_logfc = min_logfc,
+      max_logfc = max_logfc,
+      breaks = breaks
+    )
 
   }
 }
+
+# plot_data now has one entry per available (tissue, contrast)
+# combination, e.g. plot_data$Motor_cortex_sALS_vs_Control -- each with
+# $layout (harmonyumap_1/2, logFC, size), $min_logfc/$max_logfc/$breaks
+# for scale_color_gradientn(), and $tissue/$contrast for titling/
+# faceting.
