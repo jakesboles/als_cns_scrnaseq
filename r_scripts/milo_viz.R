@@ -39,6 +39,7 @@ suppressMessages({
   library(scater)
   library(igraph)
   library(scales)
+  library(ComplexUpset)
 })
 
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
@@ -200,3 +201,132 @@ ggsave(filename = paste0(results_dir, "milo_lfc_umaps.png"),
 for (i in seq_along(plot_data)){
   message(names(plot_data)[i])
 }
+
+# Upset plot of differentially abundant (DA) neighborhoods ------------------
+# Same 4-category design as deseq_viz2.R's microglia DEG upset plot,
+# applied to Milo's DA neighborhoods instead of DESeq2's DEGs: sALS vs.
+# Control and C9orf72 vs. Control, each in both tissues.
+#
+# Neighborhoods are identified by their index cell's barcode (plot_data's
+# "cell" column), not re-read from the results CSVs -- since the
+# neighborhoods/graph were built once on the shared cross-tissue object
+# (see milo.R and this script's own header), the same index-cell barcode
+# identifies the same neighborhood in every combination, exactly like a
+# gene symbol identifies the same gene across DESeq2 comparisons. A
+# neighborhood counts as "DA" in a given combination if its logFC wasn't
+# already zeroed out above (SpatialFDR >= 0.05).
+#
+# Hardcoded to the 4 combinations available for the microglia target (2
+# tissues x 2 contrasts), matching deseq_viz2.R's own hardcoding of
+# "brain"/"sc" -- fails fast with a clear message if target_name is
+# switched to something with a different tissue/contrast layout, rather
+# than silently building a mismatched plot.
+
+expected_combos <- c("Motor_cortex_sALS_vs_Control", "Motor_cortex_C9orf72_vs_Control",
+                     "Cervical_spinal_cord_sALS_vs_Control", "Cervical_spinal_cord_C9orf72_vs_Control")
+
+if (!setequal(names(plot_data), expected_combos)){
+  stop("The DA neighborhood upset plot section assumes exactly the 4 ",
+       "combinations available for the microglia target (2 tissues x 2 ",
+       "contrasts), matching deseq_viz2.R's DEG upset plot -- got: ",
+       paste(names(plot_data), collapse = ", "),
+       ". Update the set names/labeller/highlight_group logic below if ",
+       "you're running a different target_name.")
+}
+
+nhood_lists <- list()
+for (combo_name in names(plot_data)){
+  nhood_lists[[combo_name]] <- plot_data[[combo_name]]$layout %>%
+    filter(logFC != 0) %>%
+    pull(cell)
+}
+
+nhoods <- unique(list_c(nhood_lists))
+
+intersect_df <- data.frame(nhood = nhoods)
+for (combo_name in names(nhood_lists)){
+  intersect_df <- intersect_df %>%
+    mutate(x = if_else(nhood %in% nhood_lists[[combo_name]], T, F)) %>%
+    dplyr::rename(!!sym(combo_name) := "x")
+}
+
+list_names <- names(plot_data)
+
+intersect_df <- intersect_df %>%
+  mutate(
+    highlight_group = case_when(
+      Motor_cortex_C9orf72_vs_Control & Cervical_spinal_cord_C9orf72_vs_Control &
+        !Motor_cortex_sALS_vs_Control & !Cervical_spinal_cord_sALS_vs_Control ~ "C9orf72-ALS shared",
+      Motor_cortex_C9orf72_vs_Control & Motor_cortex_sALS_vs_Control &
+        !Cervical_spinal_cord_C9orf72_vs_Control & !Cervical_spinal_cord_sALS_vs_Control ~ "Motor cortex shared",
+      Cervical_spinal_cord_C9orf72_vs_Control & Cervical_spinal_cord_sALS_vs_Control &
+        !Motor_cortex_C9orf72_vs_Control & !Motor_cortex_sALS_vs_Control ~ "Cervical spinal cord shared",
+      TRUE ~ "Other"
+    )
+  )
+
+png(file = paste0(results_dir, "milo_da_nhoods_upset.png"),
+    height = 6, width = 7,
+    units = "in", res = 600)
+
+upset(intersect_df, list_names,
+      set_sizes = F,
+      stripes = "white",
+      wrap = T,
+      encode_sets = F,
+      height_ratio = 0.9,
+      labeller = ggplot2::as_labeller(c(
+        "Motor_cortex_C9orf72_vs_Control" = "C9orf72-ALS\nMotor cortex",
+        "Motor_cortex_sALS_vs_Control" = "sALS\nMotor cortex",
+        "Cervical_spinal_cord_C9orf72_vs_Control" = "C9orf72-ALS\nCervical spinal cord",
+        "Cervical_spinal_cord_sALS_vs_Control" = "sALS\nCervical spinal cord"
+      )),
+      matrix = (intersection_matrix(
+        geom = geom_point(shape = 19, size = 10),
+        segment = geom_segment(linewidth = 1.5),
+        outline_color = list(active = "white", inactive = "white")
+      )),
+      base_annotations = list(
+        'Intersection size' = intersection_size(
+          text = list(size = 0),
+          mapping = aes(fill = highlight_group)
+        ) +
+          scale_fill_manual(
+            values = c(
+              "C9orf72-ALS shared" = "#CC00FF",
+              "Motor cortex shared" = "#0073C2",
+              "Cervical spinal cord shared" = "#EFC000",
+              "Other" = "grey35"
+            ),
+            guide = "none"
+          ) +
+          scale_y_continuous(expand = c(0, 0)) +
+          ylab("# DA neighborhoods")
+      ),
+      queries = list(
+        upset_query(intersect = c("Motor_cortex_C9orf72_vs_Control", "Cervical_spinal_cord_C9orf72_vs_Control"),
+                    color = "#CC00FF", fill = "#CC00FF",
+                    only_components = "intersections_matrix"),
+        upset_query(intersect = c("Motor_cortex_C9orf72_vs_Control", "Motor_cortex_sALS_vs_Control"),
+                    color = "#0073C2", fill = "#0073C2",
+                    only_components = "intersections_matrix"),
+        upset_query(intersect = c("Cervical_spinal_cord_C9orf72_vs_Control", "Cervical_spinal_cord_sALS_vs_Control"),
+                    color = "#EFC000", fill = "#EFC000",
+                    only_components = "intersections_matrix")
+      ),
+      theme = upset_modify_themes(
+        list(
+          'Intersection size' = theme(axis.text = element_text(color = "black", size = 16),
+                                      axis.title = element_text(size = 20),
+                                      axis.ticks.y = element_line(),
+                                      panel.border = element_rect(color = "black", fill = "transparent"),
+                                      panel.grid = element_line(color = "gray70")),
+          'intersections_matrix' = theme(axis.text = element_text(color = "black", size = 16),
+                                         axis.title = element_blank())
+        )
+      )
+) +
+  ggtitle("Microglia DA neighborhoods") +
+  theme(plot.title = element_text(hjust = 0.5, size = 20, face = "plain"))
+
+dev.off()
