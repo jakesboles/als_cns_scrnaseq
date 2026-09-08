@@ -71,16 +71,6 @@ colData(milo)[unlist(nhoodIndex(milo)), "size"] <-
 tissues_present <- sort(unique(as.character(colData(milo)$tissue)))
 contrasts <- c("sALS_vs_Control", "C9orf72_vs_Control")
 
-# Color palette shared across every panel, for you to reuse in your own
-# scale_color_gradientn() calls.
-cols <- c(
-  "#7F0000",  # dark red
-  "#FF3030",  # bright red
-  "gray80",   # zero
-  "#268BFF",  # bright blue
-  "#08306B"   # dark blue
-)
-
 # Assemble one plotting-input entry per (tissue, contrast) -----------------
 
 plot_data <- list()
@@ -171,13 +161,22 @@ max_logfc <- max(max_logfc)
 
 breaks <- c(min_logfc, min_logfc/2, 0 , max_logfc/2, max_logfc)
 
+cols <- c(
+  "#7F0000",  # dark red
+  "#FF3030",  # bright red
+  "gray80",   # zero
+  "#268BFF",  # bright blue
+  "#08306B"   # dark blue
+)
+
 p_list <- list()
 
 for (i in seq_along(plot_data)){
   p_list[[i]] <- ggplot(plot_data[[i]]$layout,
                    aes(x = harmonyumap_1,
                        y = harmonyumap_2)) + 
-    geom_point(aes(color = logFC)) + 
+    geom_point(aes(color = logFC),
+               size = 0.75) + 
     scale_color_gradientn(
       colours = cols,
       values = rescale(breaks, from = c(min_logfc, max_logfc)),
@@ -266,7 +265,7 @@ intersect_df <- intersect_df %>%
   )
 
 png(file = paste0(results_dir, "milo_da_nhoods_upset.png"),
-    height = 6, width = 7,
+    height = 6, width = 6,
     units = "in", res = 600)
 
 upset(intersect_df, list_names,
@@ -282,7 +281,7 @@ upset(intersect_df, list_names,
         "Cervical_spinal_cord_sALS_vs_Control" = "sALS\nCervical spinal cord"
       )),
       matrix = (intersection_matrix(
-        geom = geom_point(shape = 19, size = 10),
+        geom = geom_point(shape = 19, size = 6),
         segment = geom_segment(linewidth = 1.5),
         outline_color = list(active = "white", inactive = "white")
       )),
