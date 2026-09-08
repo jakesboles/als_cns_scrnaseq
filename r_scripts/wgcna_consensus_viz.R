@@ -48,6 +48,9 @@ obj$group <- factor(obj$group, levels = c("Control", "sALS", "C9orf72"),
 obj$tissue <- factor(obj$tissue,
                      levels = c("Motor cortex", "Cervical spinal cord"))
 
+obj <- AddMetaData(obj,
+                   scores)
+
 # kME plots ---------------------------------------------------------------
 
 for (i in seq_along(mois)){
@@ -129,10 +132,17 @@ ggsave(filename = paste0(in_dir, mois[i], "_expression_pb.png"),
 
 # FeaturePlots ------------------------------------------------------------
 
-FeaturePlot_scCustom(obj,
-                     features = "APOE",
-                     colors_use = viridis_inferno_light_high)
-
+for (i in mois){
+  
+  FeaturePlot_scCustom(obj,
+                       features = paste0(i, "_UCell_kNN"),
+                       colors_use = viridis_inferno_light_high) + 
+    ggtitle(paste0(str_to_title(i), " module expression")) + 
+    theme(plot.title = element_text(hjust = 0.5, face = "plain"))
+  ggsave(filename = paste0(in_dir, i, "_expression_umap.png"),
+         units = "in", dpi = 600,
+         height = 4, width = 4.5)
+}
 # ORA result plots --------------------------------------------------------
 
 # df <- read.csv(paste0(in_dir, mois[i], "_gsea.csv"))
