@@ -1,12 +1,25 @@
-# Upset plot of microglia DEGs (sALS vs. Control and C9orf72 vs. Control,
-# in both motor cortex and cervical spinal cord -- 4 sets, all pairwise/
-# higher-order overlaps shown) from deseq2.R's output. Standalone script,
+# Three DESeq2/GSEA visualization sections for microglia, all reusing the
+# same celltype/results_dir/plots_dir set up front. Standalone script,
 # not part of the array job chain (matching demographics_figure.R's
-# precedent) -- this only reads a handful of small CSVs and draws one
-# plot, no Seurat/BPCells/heavy compute involved.
+# precedent) -- everything here reads a handful of small CSVs and draws
+# plots, no Seurat/BPCells/heavy compute involved.
+#
+# 1. Upset plot of microglia DEGs (sALS vs. Control and C9orf72 vs.
+#    Control, in both motor cortex and cervical spinal cord -- 4 sets,
+#    all pairwise/higher-order overlaps shown) from deseq2.R's output.
+# 2. plot_fc_scatter(): a function (not a fixed block, since the user
+#    wants this flexible) plotting any two (tissue, contrast)
+#    comparisons' log2FoldChange against each other for genes
+#    significant in at least one of the two, colored by which
+#    comparison(s) each gene is significant in.
+# 3. A lollipop chart of the top dysregulated pathways (by p.adjust)
+#    across all 4 comparisons (2 tissues x 2 groups) from
+#    deseq2_gsea.R's GSEA output, colored by group and shaped by tissue.
 #
 # Reworked from the user's pushed sample script (from a different, older
-# project's own DESeq2 visualization). Changes made to fit this project:
+# project's own DESeq2 visualization) for section 1, and from the user's
+# own description (sections 2-3 had no sample code). Changes/design
+# choices, section 1:
 # - Input paths point at deseq2.R's actual output structure:
 #   results/deseq2/<tissue>/<cell type>/<contrast>.csv, with tissue file
 #   names "brain"/"sc" (not "Brain"/"SpinalCord") and contrast file names
@@ -32,6 +45,36 @@
 #   results/deseq_viz2/ -- distinct from this project's usual per-script
 #   results/ convention, since these are meant as curated, presentation-
 #   ready figures rather than per-script diagnostic output.
+#
+# Design choices, section 2 (plot_fc_scatter()):
+# - Same raw results CSVs and "X" gene column as section 1, for the same
+#   consistency reason. Only genes significant (same thresholds as
+#   section 1) in at least one of the two chosen comparisons are plotted
+#   -- "plots of significant DEGs", not the whole transcriptome.
+# - celltype is not a function argument -- reused from the top of the
+#   script, since this whole file is scoped to microglia. tissue/contrast
+#   are the two axes the user can vary, matching their own example
+#   (same group, different tissue).
+# - Returns the ggplot object rather than saving it, since the specific
+#   pair of comparisons varies by call -- there's no single sensible
+#   fixed output filename the way section 1's upset plot has one.
+#
+# Design choices, section 3 (GSEA lollipop):
+# - Reads deseq2_gsea.R's saved
+#   results/deseq2/<tissue>/<celltype>/<contrast>_GSEA.csv files (GSEA()
+#   results, not DESeq2 results) for microglia, both tissues, both
+#   groups. GSEA()'s own default pvalueCutoff already restricts what
+#   deseq2_gsea.R saved to nominally significant pathways, so no
+#   additional significance filter is applied here.
+# - "Top dysregulated" = top_n pathways per comparison by p.adjust
+#   (default 10, change as needed); the *union* of those across all 4
+#   comparisons is plotted, not just one comparison's top list, so a
+#   pathway's behavior can be compared across tissue/group even where it
+#   wasn't top-ranked in every comparison.
+# - This section builds and saves its own plot (unlike section 2) --
+#   unlike the flexible fold-change scatter, this is a complete, specific
+#   request (all 4 comparisons, a fixed color/shape encoding), so it gets
+#   a real output file the same way section 1 does.
 
 library(tidyverse)
 library(ComplexUpset)
@@ -41,6 +84,10 @@ setwd("/projects/b1169/boles/als_cns_scrnaseq")
 results_dir <- "results/deseq2/"
 plots_dir <- "figures/"
 dir.create(plots_dir, showWarnings = F, recursive = T)
+
+# celltype is set once here and reused by sections 2 and 3 below -- all
+# three sections are scoped to microglia specifically, matching this
+# script's established focus (section 1's upset plot).
 
 # Microglia ---------------------------------------------------------------
 
@@ -136,3 +183,133 @@ upset(intersect_df, list_names,
   theme(plot.title = element_text(hjust = 0.5, size = 20))
 
 dev.off()
+
+# Fold-change scatter between any two comparisons ---------------------------
+# Flexible, per the user -- a function rather than a fixed block, so any
+# two (tissue, contrast) comparisons can be plotted against each other
+# without editing the body each time. Uses the same raw (non-LFC-shrunk)
+# results CSVs and "X" gene-identifier column as the upset plot above,
+# for the same reason (consistency with deseq_viz1.R's established DEG
+# definition in this project). Unlike the upset plot, this only shows
+# genes significant in at least one of the two comparisons ("plots of
+# significant DEGs"), not the whole transcriptome background.
+#
+# Returns the ggplot object rather than saving it -- since the specific
+# pair of comparisons varies by call, there's no single sensible fixed
+# output filename to save to; ggsave() it yourself under whatever name
+# fits the comparison you ran.
+
+plot_fc_scatter <- function(tissue_1, contrast_1, tissue_2, contrast_2,
+                            label_1 = paste(tissue_1, contrast_1),
+                            label_2 = paste(tissue_2, contrast_2)){
+
+  path_1 <- paste0(results_dir, tissue_1, "/", celltype, "/", contrast_1, ".csv")
+  path_2 <- paste0(results_dir, tissue_2, "/", celltype, "/", contrast_2, ".csv")
+
+  missing <- c(path_1, path_2)[!file.exists(c(path_1, path_2))]
+  if (length(missing) > 0){
+    stop(paste0("Missing DESeq2 results file(s): ",
+                paste(missing, collapse = ", ")))
+  }
+
+  res_1 <- read.csv(path_1) %>%
+    dplyr::select(X, log2FoldChange, padj)
+  res_2 <- read.csv(path_2) %>%
+    dplyr::select(X, log2FoldChange, padj)
+
+  df <- inner_join(res_1, res_2, by = "X", suffix = c("_1", "_2"))
+
+  df <- df %>%
+    mutate(sig_1 = !is.na(padj_1) & padj_1 < 0.05 & abs(log2FoldChange_1) > log2(1.5),
+           sig_2 = !is.na(padj_2) & padj_2 < 0.05 & abs(log2FoldChange_2) > log2(1.5),
+           sig_group = case_when(
+             sig_1 & sig_2 ~ "Both",
+             sig_1 & !sig_2 ~ label_1,
+             !sig_1 & sig_2 ~ label_2,
+             TRUE ~ "Neither"
+           )) %>%
+    filter(sig_group != "Neither")
+
+  ggplot(df, aes(x = log2FoldChange_1, y = log2FoldChange_2, color = sig_group)) +
+    geom_point() +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+    labs(x = paste0("log2FC (", label_1, ")"),
+        y = paste0("log2FC (", label_2, ")"),
+        color = "Significant in") +
+    theme_bw(base_size = 12) +
+    theme(axis.text = element_text(color = "black"))
+}
+
+# Example matching the user's own comparison:
+# p <- plot_fc_scatter("brain", "C9orf72_vs_Control", "sc", "C9orf72_vs_Control",
+#                      label_1 = "C9-ALS motor cortex", label_2 = "C9-ALS spinal cord")
+# p
+
+# GSEA lollipop chart across all 4 comparisons ------------------------------
+# Brings in deseq2_gsea.R's output (results/deseq2/<tissue>/<celltype>/
+# <contrast>_GSEA.csv) for microglia, in both tissues and both groups.
+# GSEA()'s own default pvalueCutoff already restricts what deseq2_gsea.R
+# saved to nominally significant pathways, so no additional significance
+# filtering is applied here beyond picking the top N per comparison.
+# "top_n" pathways are taken per comparison, then the union of those
+# across all 4 comparisons is plotted so the same pathway's behavior can
+# be compared across tissue/group even if it wasn't top-ranked in every
+# comparison.
+
+top_n <- 10 # change as needed
+
+gsea_files <- expand.grid(tissue = c("brain", "sc"),
+                          contrast = c("sALS_vs_Control", "C9orf72_vs_Control"),
+                          stringsAsFactors = F) %>%
+  mutate(path = paste0(results_dir, tissue, "/", celltype, "/", contrast,
+                       "_GSEA.csv"),
+         group = if_else(contrast == "sALS_vs_Control", "sALS", "C9orf72-ALS"),
+         tissue_label = if_else(tissue == "brain", "Motor cortex",
+                                "Cervical spinal cord"))
+
+missing <- gsea_files$path[!file.exists(gsea_files$path)]
+if (length(missing) > 0){
+  stop(paste0("Missing GSEA results file(s) for ", celltype, ": ",
+              paste(missing, collapse = ", "),
+              " -- check whether deseq2_gsea.R has been run for this ",
+              "cell type/tissue/contrast."))
+}
+
+gsea_all <- gsea_files %>%
+  mutate(data = map(path, read.csv)) %>%
+  unnest(data)
+
+top_pathways <- gsea_all %>%
+  group_by(tissue, contrast) %>%
+  slice_min(p.adjust, n = top_n) %>%
+  ungroup() %>%
+  pull(ID) %>%
+  unique()
+
+plot_df <- gsea_all %>%
+  filter(ID %in% top_pathways)
+
+pathway_order <- plot_df %>%
+  group_by(ID) %>%
+  summarize(mean_abs_nes = mean(abs(NES))) %>%
+  arrange(mean_abs_nes) %>%
+  pull(ID)
+
+plot_df <- plot_df %>%
+  mutate(ID = factor(ID, levels = pathway_order))
+
+p <- ggplot(plot_df, aes(x = NES, y = ID)) +
+  geom_segment(aes(xend = 0, yend = ID, color = group)) +
+  geom_point(aes(color = group, shape = tissue_label), size = 3) +
+  geom_vline(xintercept = 0, color = "grey50") +
+  labs(x = "Normalized enrichment score", y = NULL,
+      color = "Group", shape = "Tissue",
+      title = "Microglia: top dysregulated pathways") +
+  theme_bw(base_size = 12) +
+  theme(axis.text = element_text(color = "black"),
+        plot.title = element_text(hjust = 0.5))
+
+ggsave(p,
+       filename = paste0(plots_dir, "microglia_gsea_lollipop.pdf"),
+       height = max(6, length(pathway_order) * 0.3), width = 9)
