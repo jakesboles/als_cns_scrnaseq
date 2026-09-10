@@ -19,14 +19,16 @@
 #   out identically distributed, which is what surfaced the bug.
 # - The fix: each neighborhood is now scored separately per comparison,
 #   using only the member cells that actually belong to that comparison --
-#   i.e. cells in the relevant tissue AND in either "Control" or that
-#   comparison's disease group (excluding the third, irrelevant group).
-#   Those per-comparison cell subsets genuinely differ (a neighborhood's
-#   brain_C9 subset and brain_sALS subset share only their Control cells,
-#   not their disease-group cells), so the resulting module scores can
-#   legitimately differ across comparisons -- unlike logFC/size/embedding,
-#   which are single neighborhood-level values miloR itself computes once
-#   and that don't need this per-comparison treatment.
+#   i.e. cells in the relevant tissue AND in that comparison's disease
+#   group specifically (sALS or C9orf72, not both, and not Control either
+#   -- per the user, Control cells shouldn't be part of a comparison's
+#   module score at all, not even shared across comparisons). Those
+#   per-comparison cell subsets are now fully disjoint per tissue (a
+#   neighborhood's brain_C9 and brain_sALS subsets share no cells), so the
+#   resulting module scores can legitimately differ across comparisons --
+#   unlike logFC/size/embedding, which are single neighborhood-level values
+#   miloR itself computes once and that don't need this per-comparison
+#   treatment.
 # - Module score aggregation within a comparison's cell subset is still a
 #   mean across member cells (via nhoods(milo)'s cell x neighborhood
 #   incidence matrix), not just the index cell's score -- confirmed with
@@ -175,9 +177,11 @@ if (coverage < 0.5){
 }
 
 # Per-comparison neighborhood scoring ------------------------------------
-# Each comparison gets its own cell subset (this tissue AND (Control OR
-# that comparison's disease group)) -- see header note above for why this
-# replaces the earlier "average over the whole neighborhood" design.
+# Each comparison gets its own cell subset (this tissue AND that
+# comparison's disease group only, Control excluded) -- see header note
+# above for why this replaces the earlier "average over the whole
+# neighborhood" (and then "average over the whole neighborhood minus the
+# other disease group") designs.
 
 message2("Computing per-comparison module scores and DA results")
 
