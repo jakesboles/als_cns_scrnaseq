@@ -103,6 +103,7 @@ suppressMessages({
   library(miloR)
   library(scater)
   library(Matrix)
+  library(ggExtra)
 })
 
 message2 <- function(text){
@@ -302,26 +303,52 @@ for (i in seq_len(nrow(combos))){
 
 comparison_df <- list_rbind(comparison_rows)
 
-comparison_df %>% 
-  # mutate(z = sin(turquoise) * cos(logFC)) %>%
-  filter(sig == TRUE) %>%
-  na.omit() %>%
-  ggplot(aes(x = turquoise,
-             y = logFC)) + 
-  geom_density_2d() + 
-  facet_wrap(. ~ comparison)
+# comparison_df %>% 
+#   filter(sig == TRUE) %>% 
+#   na.omit() %>% 
+#   group_by(comparison) %>% 
+#   summarize(n = n())
+# 
+# comparison_df %>%
+#   filter(sig == TRUE) %>%
+#   na.omit() %>%
+#   group_by(comparison) %>%
+#   summarise(
+#     n = n(),
+#     turquoise_min = min(turquoise), turquoise_max = max(turquoise), turquoise_sd = sd(turquoise),
+#     logFC_min = min(logFC), logFC_max = max(logFC), logFC_sd = sd(logFC),
+#     any_nonfinite = any(!is.finite(turquoise) | !is.finite(logFC))
+#   )
+# 
+# comparison_df %>%
+#   filter(sig == TRUE) %>%
+#   na.omit() %>%
+#   group_by(comparison) %>%
+#   summarise(
+#     n = n(),
+#     n_distinct_turquoise = n_distinct(turquoise),
+#     n_distinct_logFC = n_distinct(logFC),
+#     turquoise_iqr = IQR(turquoise),
+#     logFC_iqr = IQR(logFC),
+#     turquoise_bw = MASS::bandwidth.nrd(turquoise),
+#     logFC_bw = MASS::bandwidth.nrd(logFC)
+#   )
 
-comparison_df %>% 
-  filter(sig == TRUE & 
-           logFC > 0) %>% 
+p <- comparison_df %>%
+  filter(sig == TRUE & logFC > 0) %>%
   na.omit() %>%
-  ggplot(aes(x = logFC,
-             y = turquoise)) + 
-  geom_point(aes(color = comparison)) +
-  # geom_density_2d(aes(color = comparison)) +
-  scale_color_manual(values = JCO_Four()) + 
-  facet_wrap(. ~ comparison) + 
+  ggplot(aes(x = blue, y = logFC)) +
+  # geom_density_2d(aes(color = comparison), contour_var = "ndensity") +
+  geom_point(aes(color = comparison), alpha = 0.7, size = 3) +
+  # facet_wrap(. ~ comparison, scales = "fixed") +
+  # scale_color_viridis_c() +
   theme_linedraw()
+
+ggMarginal(p, type = "histogram",
+           groupFill = T)
+
+# find a good way to statistically analyze the effect of comparison on the 
+# relationship between logFC and module score
 
 # Join comparison-independent neighborhood metadata onto every comparison's
 # rows and save -----------------------------------------------------------
