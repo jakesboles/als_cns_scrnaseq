@@ -203,7 +203,7 @@ for (i in seq_len(nrow(combos))){
   message2(paste0("Comparison: ", comparison))
 
   group_mask <- milo_tissue == combos$tissue_title[i] &
-    milo_group %in% c("Control", combos$disease_group[i])
+    milo_group %in% c(combos$disease_group[i])
 
   comparison_cells <- colnames(milo)[group_mask]
   scored_cells <- intersect(comparison_cells, common_cells)
@@ -261,6 +261,27 @@ for (i in seq_len(nrow(combos))){
 }
 
 comparison_df <- list_rbind(comparison_rows)
+
+comparison_df %>% 
+  # mutate(z = sin(turquoise) * cos(logFC)) %>%
+  filter(sig == TRUE) %>%
+  na.omit() %>%
+  ggplot(aes(x = turquoise,
+             y = logFC)) + 
+  geom_density_2d() + 
+  facet_wrap(. ~ comparison)
+
+comparison_df %>% 
+  filter(sig == TRUE & 
+           logFC > 0) %>% 
+  na.omit() %>%
+  ggplot(aes(x = logFC,
+             y = turquoise)) + 
+  geom_point(aes(color = comparison)) +
+  # geom_density_2d(aes(color = comparison)) +
+  scale_color_manual(values = JCO_Four()) + 
+  facet_wrap(. ~ comparison) + 
+  theme_linedraw()
 
 # Join comparison-independent neighborhood metadata onto every comparison's
 # rows and save -----------------------------------------------------------
