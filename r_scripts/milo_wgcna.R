@@ -74,6 +74,23 @@
 #   every comparison's row for that neighborhood unchanged.
 # - Every neighborhood is included, not just DA/significant ones -- the
 #   user can filter interactively.
+# - Many neighborhoods will legitimately have NA module scores and
+#   near-null DA results (logFC == 0, sig == NA) for a given comparison --
+#   since neighborhoods are shared across tissues but individual
+#   neighborhoods aren't evenly split between tissues, some are dominated
+#   by the *other* tissue's cells and barely exist in this one, leaving
+#   nothing for this comparison's per-cell subset to average and a
+#   degenerate testNhoods() fit for this tissue. n_tissue_cells (total
+#   member cells from this tissue, any group -- Control included, unlike
+#   n_group_cells) is included specifically so this can be checked
+#   directly rather than inferred -- a low n_tissue_cells alongside a
+#   zeroed-out row confirms this explanation; a healthy n_tissue_cells
+#   with n_group_cells == 0 instead means the neighborhood has plenty of
+#   this tissue's cells, just none from this specific disease group.
+# - sig is NA (not FALSE) when SpatialFDR itself is NA, rather than
+#   collapsing "genuinely tested and not significant" and "untested/
+#   degenerate fit" into the same FALSE value -- the latter is common for
+#   the tissue-starved neighborhoods described above.
 # - module_scores_ucell.csv is read with row.names = 1 (restoring real cell
 #   barcode rownames), not read as a plain data frame with an "X" gene/cell
 #   column the way this project's DESeq2 CSVs usually are -- barcodes are
@@ -235,12 +252,27 @@ for (i in seq_len(nrow(combos))){
   nh_mat_group <- nh_mat[comparison_cells, , drop = F]
   n_group_cells <- Matrix::colSums(nh_mat_group)
 
+  # Total member cells from this tissue *regardless of group* (Control
+  # included) -- diagnostic only, not used in any score. A neighborhood
+  # with n_group_cells == 0 but a healthy n_tissue_cells just has no
+  # cells of this specific disease group locally; one where
+  # n_tissue_cells is *also* ~0 barely exists in this tissue at all (it's
+  # dominated by the other tissue's cells), which is the more likely
+  # explanation for the exact-zero logFC/untested pattern the user found
+  # in some of these rows -- testNhoods()'s per-tissue GLM fit degenerates
+  # for a neighborhood with essentially no counts across that tissue's
+  # samples.
+  tissue_mask <- milo_tissue == combos$tissue_title[i]
+  nh_mat_tissue <- nh_mat[colnames(milo)[tissue_mask], , drop = F]
+  n_tissue_cells <- Matrix::colSums(nh_mat_tissue)
+
   scores_df_i <- as.data.frame(mean_scores) %>%
     mutate(Nhood = seq_len(n_nhoods),
            comparison = comparison,
+           n_tissue_cells = as.numeric(n_tissue_cells),
            n_group_cells = as.numeric(n_group_cells),
            n_scored_members = as.numeric(n_scored_members)) %>%
-    relocate(Nhood, comparison, n_group_cells, n_scored_members)
+    relocate(Nhood, comparison, n_tissue_cells, n_group_cells, n_scored_members)
 
   results_csv <- paste0(milo_results_dir, combos$contrast[i], "_",
                         combos$tissue_file[i], "_nhood_results.csv")
@@ -252,9 +284,13 @@ for (i in seq_len(nrow(combos))){
     scores_df_i$logFC <- NA_real_
     scores_df_i$sig <- NA
   } else {
+    # sig stays NA (not FALSE) when SpatialFDR itself is NA -- keeps
+    # "genuinely tested and not significant" distinguishable from
+    # "untested/degenerate fit for this neighborhood in this tissue" (see
+    # n_tissue_cells note above), rather than collapsing both into FALSE.
     res <- read.csv(results_csv) %>%
       dplyr::select(Nhood, logFC, SpatialFDR) %>%
-      mutate(sig = !is.na(SpatialFDR) & SpatialFDR < 0.05) %>%
+      mutate(sig = if_else(is.na(SpatialFDR), NA, SpatialFDR < 0.05)) %>%
       dplyr::select(-SpatialFDR)
 
     scores_df_i <- scores_df_i %>%
@@ -295,7 +331,7 @@ message2("Saving joint Milo/WGCNA data frame")
 nhood_df <- comparison_df %>%
   left_join(nhood_meta, by = "Nhood") %>%
   relocate(Nhood, comparison, cell, size, harmonyumap_1, harmonyumap_2,
-           n_group_cells, n_scored_members, logFC, sig)
+           n_tissue_cells, n_group_cells, n_scored_members, logFC, sig)
 
 write.csv(nhood_df,
           file = paste0(out_dir, "milo_wgcna_joint_data.csv"),
