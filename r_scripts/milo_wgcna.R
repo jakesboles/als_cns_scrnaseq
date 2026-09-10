@@ -1,23 +1,38 @@
 # Integrates consensus hdWGCNA module scores (wgcna_consensus_cns.R) with
 # Milo differential neighborhood abundance results (milo.R) for microglia
-# into one wide data frame: one row per neighborhood, with its UMAP
-# embedding (for plotting), logFC/significance in both tissues x both
-# disease-group contrasts, and each WGCNA module's mean score across the
-# neighborhood's member cells. Assembly only, no plotting -- the user will
-# build plots interactively from this data frame.
+# into one long-format data frame: one row per (neighborhood, comparison)
+# pair, with the neighborhood's UMAP embedding (for plotting), that
+# comparison's logFC/significance, and each WGCNA module's mean score
+# across just that comparison's member cells within the neighborhood.
+# Assembly only, no plotting -- the user will build plots interactively
+# from this data frame.
 #
 # Design notes:
-# - Module score aggregation: for each neighborhood, module scores are
-#   averaged across every cell miloR assigned to it (via nhoods(milo)'s
-#   cell x neighborhood incidence matrix), not just its index cell's own
-#   score. Confirmed with the user -- this matches Milo's own established
-#   convention for overlaying a continuous per-cell covariate onto
-#   neighborhoods (e.g. plotNhoodExpressionDA()), and keeps it consistent
-#   with how testNhoods()'s logFC/significance are themselves computed
-#   over the whole neighborhood, not one cell. milo_viz.R's index-cell-only
-#   convention doesn't transfer here -- logFC/size/embedding there are
-#   already neighborhood-level values computed by miloR itself, not
-#   per-cell values needing aggregation.
+# - Reworked from an earlier wide-format version of this script (one row
+#   per neighborhood, module scores averaged across *all* of a
+#   neighborhood's member cells regardless of tissue/group) after the user
+#   caught a real bug in that design: a neighborhood's cell membership
+#   doesn't change between comparisons (only abundance does), but pooling
+#   every group's cells together to score a neighborhood meant every
+#   comparison saw the exact same module score for a given neighborhood --
+#   the "blue" module histograms for brain_C9/brain_sALS/sc_C9/sc_sALS came
+#   out identically distributed, which is what surfaced the bug.
+# - The fix: each neighborhood is now scored separately per comparison,
+#   using only the member cells that actually belong to that comparison --
+#   i.e. cells in the relevant tissue AND in either "Control" or that
+#   comparison's disease group (excluding the third, irrelevant group).
+#   Those per-comparison cell subsets genuinely differ (a neighborhood's
+#   brain_C9 subset and brain_sALS subset share only their Control cells,
+#   not their disease-group cells), so the resulting module scores can
+#   legitimately differ across comparisons -- unlike logFC/size/embedding,
+#   which are single neighborhood-level values miloR itself computes once
+#   and that don't need this per-comparison treatment.
+# - Module score aggregation within a comparison's cell subset is still a
+#   mean across member cells (via nhoods(milo)'s cell x neighborhood
+#   incidence matrix), not just the index cell's score -- confirmed with
+#   the user previously, matches Milo's own convention for overlaying a
+#   continuous per-cell covariate onto neighborhoods (e.g.
+#   plotNhoodExpressionDA()).
 # - Module scores come from wgcna_consensus_cns.R's
 #   results/wgcna_consensus/Microglia/module_scores_ucell.csv (kNN-smoothed
 #   UCell scores, one row per cell), not module_eigengenes.csv (the
@@ -31,26 +46,30 @@
 #   ultimately trace back to the same 17_obj_reassembly.R per-tissue
 #   cell_type3 annotations with no further cell exclusion in between, so
 #   the cell barcode sets are expected to match closely. Checked at
-#   runtime (not assumed) via a coverage message, with a hard stop() only
-#   if coverage is implausibly low (<50%), since that would mean the
-#   assumption is actually wrong rather than a handful of incidental
-#   stragglers.
+#   runtime (not assumed) via a coverage message (both overall and per
+#   comparison), with a hard stop() only if overall coverage is implausibly
+#   low (<50%), since that would mean the assumption is actually wrong
+#   rather than a handful of incidental stragglers.
+# - `tissue`/`group` come straight from colData(milo) -- as.SingleCellExperiment()
+#   (called in milo.R when building the Milo object) carries the Seurat
+#   object's metadata columns over as colData, so these are the same
+#   `tissue`/`group` columns milo.R itself filters/models on, not reloaded
+#   from anywhere else.
 # - Neighborhood ID is the same integer Nhood ID testNhoods() itself uses
 #   (1:ncol(nhoods(milo))) -- the natural join key across nhoods(milo)'s
 #   incidence matrix, nhoodIndex(milo), and every results CSV's own "Nhood"
-#   column, so everything is joined directly by Nhood rather than going
-#   through milo_viz.R's index-cell-barcode indirection.
-# - logFC/significance are kept raw here (not zeroed out for non-
-#   significant neighborhoods the way milo_viz.R zeroes logFC for plot
-#   coloring) -- this is a data table for further interactive analysis, not
-#   a single fixed plot, so thresholding is left to the user. "Significant"
-#   = SpatialFDR < 0.05, this project's standard threshold elsewhere
-#   (DESeq2, GSEA).
+#   column.
+# - logFC/significance are kept raw (not zeroed out for non-significant
+#   neighborhoods the way milo_viz.R zeroes logFC for plot coloring) --
+#   this is a data table for further interactive analysis, not a single
+#   fixed plot, so thresholding is left to the user. "Significant" =
+#   SpatialFDR < 0.05, this project's standard threshold elsewhere (DESeq2,
+#   GSEA).
 # - UMAP embedding is still the index cell's own coordinates (reattached
-#   from 19_subclustering3.R's harmony_umap.rds, same as milo_viz.R) --
-#   that's just a plotting position for the neighborhood, not a value being
-#   aggregated, so the index-cell convention is unaffected by the module-
-#   score design choice above.
+#   from 19_subclustering3.R's harmony_umap.rds, same as milo_viz.R) and
+#   doesn't vary by comparison -- it's a plotting position for the
+#   neighborhood, not a value being aggregated, so it's joined back onto
+#   every comparison's row for that neighborhood unchanged.
 # - Every neighborhood is included, not just DA/significant ones -- the
 #   user can filter interactively.
 # - module_scores_ucell.csv is read with row.names = 1 (restoring real cell
@@ -102,14 +121,14 @@ if (is.null(rownames(nh_mat))) rownames(nh_mat) <- colnames(milo)
 n_nhoods <- ncol(nh_mat)
 
 # Neighborhood ID, index cell, embedding, and total size ---------------------
-# One row per neighborhood, Nhood ID = column index into nhoods(milo) --
-# see header note above.
+# One row per neighborhood -- comparison-independent, joined onto every
+# comparison's rows below. Nhood ID = column index into nhoods(milo).
 
 message2("Assembling per-neighborhood ID, index cell, size, and embedding")
 
 index_rows <- unlist(nhoodIndex(milo))
 
-nhood_df <- data.frame(
+nhood_meta <- data.frame(
   Nhood = seq_len(n_nhoods),
   cell = colnames(milo)[index_rows],
   size = Matrix::colSums(nh_mat)
@@ -118,10 +137,10 @@ nhood_df <- data.frame(
 umap_embed <- reducedDim(milo, "harmony_umap")[index_rows, ] %>%
   as.data.frame()
 
-nhood_df <- bind_cols(nhood_df, umap_embed)
+nhood_meta <- bind_cols(nhood_meta, umap_embed)
 
-# Bring in WGCNA module scores, averaged per neighborhood ---------------------
-# Mean across member cells, not index cell only -- see header note above.
+# Read WGCNA module scores ----------------------------------------------
+# See header note above re: row.names = 1.
 
 message2("Reading in WGCNA module scores")
 
@@ -142,7 +161,7 @@ coverage <- length(common_cells) / nrow(nh_mat)
 
 message2(paste0(round(coverage * 100, 1), "% of milo's ", target_name,
                 " cells (", length(common_cells), " / ", nrow(nh_mat), ") ",
-                "have a matching WGCNA module score"))
+                "have a matching WGCNA module score overall"))
 
 if (coverage < 0.5){
   stop("Fewer than 50% of milo's ", target_name, " cells could be matched ",
@@ -155,70 +174,103 @@ if (coverage < 0.5){
        "check both scripts' source metadata before proceeding.")
 }
 
-nh_mat_common <- nh_mat[common_cells, , drop = F]
-score_mat <- as.matrix(module_scores[common_cells, module_cols, drop = F])
+# Per-comparison neighborhood scoring ------------------------------------
+# Each comparison gets its own cell subset (this tissue AND (Control OR
+# that comparison's disease group)) -- see header note above for why this
+# replaces the earlier "average over the whole neighborhood" design.
 
-n_scored_members <- Matrix::colSums(nh_mat_common)
-score_sums <- as.matrix(Matrix::crossprod(nh_mat_common, score_mat))
-mean_scores <- score_sums / n_scored_members
-mean_scores[n_scored_members == 0, ] <- NA
-
-colnames(mean_scores) <- str_remove_all(colnames(mean_scores), "_UCell_kNN$")
-
-mean_scores_df <- as.data.frame(mean_scores) %>%
-  mutate(Nhood = seq_len(n_nhoods),
-         n_scored_members = as.numeric(n_scored_members)) %>%
-  relocate(Nhood, n_scored_members)
-
-nhood_df <- nhood_df %>%
-  left_join(mean_scores_df, by = "Nhood")
-
-# Bring in per-tissue, per-contrast logFC/significance ------------------------
-# Raw (not zeroed) -- see header note above. Short tissue codes
-# ("brain"/"sc") match deseq_viz2.R's naming convention.
-
-message2("Reading in Milo differential abundance results")
+message2("Computing per-comparison module scores and DA results")
 
 combos <- tribble(
-  ~tissue_file,           ~tissue_short, ~contrast,            ~contrast_short,
-  "Motor_cortex",         "brain",       "sALS_vs_Control",    "sALS",
-  "Motor_cortex",         "brain",       "C9orf72_vs_Control", "C9",
-  "Cervical_spinal_cord", "sc",          "sALS_vs_Control",    "sALS",
-  "Cervical_spinal_cord", "sc",          "C9orf72_vs_Control", "C9"
-)
+  ~tissue_title,          ~tissue_short, ~contrast,            ~contrast_short, ~disease_group,
+  "Motor cortex",         "brain",       "sALS_vs_Control",    "sALS",          "sALS",
+  "Motor cortex",         "brain",       "C9orf72_vs_Control", "C9",            "C9orf72",
+  "Cervical spinal cord", "sc",          "sALS_vs_Control",    "sALS",          "sALS",
+  "Cervical spinal cord", "sc",          "C9orf72_vs_Control", "C9",            "C9orf72"
+) %>%
+  mutate(tissue_file = str_replace_all(tissue_title, " ", "_"),
+         comparison = paste0(tissue_short, "_", contrast_short))
+
+milo_tissue <- colData(milo)$tissue
+milo_group <- colData(milo)$group
+
+comparison_rows <- list()
 
 for (i in seq_len(nrow(combos))){
+
+  comparison <- combos$comparison[i]
+
+  message2(paste0("Comparison: ", comparison))
+
+  group_mask <- milo_tissue == combos$tissue_title[i] &
+    milo_group %in% c("Control", combos$disease_group[i])
+
+  comparison_cells <- colnames(milo)[group_mask]
+  scored_cells <- intersect(comparison_cells, common_cells)
+
+  coverage_i <- length(scored_cells) / length(comparison_cells)
+  message2(paste0("  ", length(comparison_cells), " cells in this ",
+                  "tissue/group subset, ", length(scored_cells), " (",
+                  round(coverage_i * 100, 1), "%) have a WGCNA module ",
+                  "score"))
+
+  # Module scores: mean over just this comparison's WGCNA-scored member
+  # cells per neighborhood.
+  nh_mat_scored <- nh_mat[scored_cells, , drop = F]
+  score_mat_i <- as.matrix(module_scores[scored_cells, module_cols, drop = F])
+
+  n_scored_members <- Matrix::colSums(nh_mat_scored)
+  score_sums <- as.matrix(Matrix::crossprod(nh_mat_scored, score_mat_i))
+  mean_scores <- score_sums / n_scored_members
+  mean_scores[n_scored_members == 0, ] <- NA
+  colnames(mean_scores) <- str_remove_all(colnames(mean_scores), "_UCell_kNN$")
+
+  # Total member cells in this comparison's subset per neighborhood,
+  # regardless of WGCNA-score availability -- for transparency alongside
+  # n_scored_members.
+  nh_mat_group <- nh_mat[comparison_cells, , drop = F]
+  n_group_cells <- Matrix::colSums(nh_mat_group)
+
+  scores_df_i <- as.data.frame(mean_scores) %>%
+    mutate(Nhood = seq_len(n_nhoods),
+           comparison = comparison,
+           n_group_cells = as.numeric(n_group_cells),
+           n_scored_members = as.numeric(n_scored_members)) %>%
+    relocate(Nhood, comparison, n_group_cells, n_scored_members)
 
   results_csv <- paste0(milo_results_dir, combos$contrast[i], "_",
                         combos$tissue_file[i], "_nhood_results.csv")
 
-  logfc_col <- paste0("logFC_", combos$tissue_short[i], "_",
-                      combos$contrast_short[i])
-  sig_col <- paste0("sig_", combos$tissue_short[i], "_",
-                    combos$contrast_short[i])
-
   if (!file.exists(results_csv)){
-    message2(paste0("Missing ", results_csv, " -- filling ", logfc_col, "/",
-                    sig_col, " with NA (likely skipped by milo.R's ",
-                    "min_donors_per_group check)"))
-    nhood_df[[logfc_col]] <- NA_real_
-    nhood_df[[sig_col]] <- NA
-    next
+    message2(paste0("  Missing ", results_csv, " -- filling logFC/sig with ",
+                    "NA (likely skipped by milo.R's min_donors_per_group ",
+                    "check)"))
+    scores_df_i$logFC <- NA_real_
+    scores_df_i$sig <- NA
+  } else {
+    res <- read.csv(results_csv) %>%
+      dplyr::select(Nhood, logFC, SpatialFDR) %>%
+      mutate(sig = !is.na(SpatialFDR) & SpatialFDR < 0.05) %>%
+      dplyr::select(-SpatialFDR)
+
+    scores_df_i <- scores_df_i %>%
+      left_join(res, by = "Nhood")
   }
 
-  res <- read.csv(results_csv) %>%
-    dplyr::select(Nhood, logFC, SpatialFDR) %>%
-    mutate(!!sig_col := !is.na(SpatialFDR) & SpatialFDR < 0.05) %>%
-    dplyr::rename(!!logfc_col := logFC) %>%
-    dplyr::select(-SpatialFDR)
-
-  nhood_df <- nhood_df %>%
-    left_join(res, by = "Nhood")
+  comparison_rows[[comparison]] <- scores_df_i
 }
 
-# Save -------------------------------------------------------------------
+comparison_df <- list_rbind(comparison_rows)
+
+# Join comparison-independent neighborhood metadata onto every comparison's
+# rows and save -----------------------------------------------------------
 
 message2("Saving joint Milo/WGCNA data frame")
+
+nhood_df <- comparison_df %>%
+  left_join(nhood_meta, by = "Nhood") %>%
+  relocate(Nhood, comparison, cell, size, harmonyumap_1, harmonyumap_2,
+           n_group_cells, n_scored_members, logFC, sig)
 
 write.csv(nhood_df,
           file = paste0(out_dir, "milo_wgcna_joint_data.csv"),
