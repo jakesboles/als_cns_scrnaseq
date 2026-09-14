@@ -121,8 +121,16 @@ obj <- FindNeighbors(obj,
 obj <- FindClusters(obj,
                     algorithm = 4,
                     method = "igraph",
-                    resolution = 0.8)
+                    resolution = 0.2,
+                    cluster.name = "cluster")
 
+p <- DimPlot_scCustom(obj,
+                 reduction = "umap",
+                 label = F)
+ggsave(p,
+       filename = paste0(results_dir, "raw_cluster_umap.png"),
+       units = "in", dpi = 600,
+       height = 4, width = 5)
 # Bring in Milo differential neighborhood abundance results -----------------
 # See header note above for the full design rationale.
 
@@ -276,9 +284,45 @@ ggsave(p2,
 
 p2
 
-DimPlot_scCustom(obj,
-                 label = F) +
+# FAM ---------------------------------------------------------------------
 
-dittoBarPlot(obj,
-             var = c("group"),
-             group.by = "seurat_clusters")
+markers <- FindAllMarkers(obj)
+
+write.csv(markers,
+          file = paste0(results_dir, "cluster_markers.csv"))
+
+# Rewrite labels and add to full meta data --------------------------------
+
+obj@meta.data <- obj@meta.data %>% 
+  mutate(cell_type4 = paste0("Microglia", cluster))
+
+DimPlot_scCustom(obj,
+                 group.by = "cell_type4")
+
+full_meta <- readRDS("data/18_full_integration/brain_sc/metadata.rds")
+
+microglia_meta <- obj@meta.data
+
+colnames(full_meta)
+colnames(microglia_meta)
+
+cols <- c("orig.ident", "nCount_RNA", "nFeature_RNA", "tissue", "batch", "group", "id",
+          "percent_mito", "log10GenesPerUMI", "cell_type3", "cell_type4")
+
+full_meta <- full_meta[, colnames(full_meta) %in% cols]
+microglia_meta <- microglia_meta[, colnames(microglia_meta) %in% cols]
+
+full_meta$cell_type4 <- full_meta$cell_type3
+
+idx <- match(rownames(microglia_meta), rownames(full_meta))
+
+full_meta$cell_type4[idx] <- microglia_meta$cell_type4
+
+unique(full_meta$cell_type4)
+
+table(full_meta$cell_type3, full_meta$cell_type4)
+
+saveRDS(full_meta,
+        file = paste0(data_dir, "full_metadata.rds"))
+saveRDS(microglia_meta,
+        file = paste0(data_dir, "microglia_metadata.rds"))
