@@ -41,6 +41,26 @@ df <- df %>%
                                 .default = NA) %>% 
            factor(levels = c("Bulbar", "Limb", "Both")))
 
+df <- df %>% 
+  mutate(group = case_when(c9orf72_mutation == "Y" ~ "C9orf72-ALS",
+                           clinical_diagnosis == "Control" ~ "Control",
+                           .default = "sALS") %>% 
+           factor(levels = c("Control", "sALS", "C9orf72-ALS")))
+
+write.csv(df,
+          file = "tab_data/organized_metadata_for_plotting.csv",
+          row.names = F)
+
+df <- df %>%
+  mutate(clinical_diagnosis = factor(clinical_diagnosis,
+                                     levels = c("Control", "ALS", "ALS-FTD"))) %>%
+  # arrange(clinical_diagnosis, desc(c9orf72_mutation)) %>%
+  # mutate(case_number = fct_inorder(case_number)) %>%
+  arrange(group, clinical_diagnosis, c9orf72_mutation) %>%   # whatever order you want within each group
+  group_by(group) %>%
+  mutate(x_local = row_number()) %>%
+  ungroup()
+
 
 base_theme <- function(show_y_text = FALSE) {
   theme_minimal(base_size = 12) +
@@ -51,6 +71,7 @@ base_theme <- function(show_y_text = FALSE) {
       axis.title.y = element_text(angle = 0, vjust = 0.5, hjust = 1),
       axis.text.y    = if (show_y_text) element_text(size = 7) else element_blank(),
       panel.grid     = element_blank(),
+      panel.spacing.x = unit(0.1, "cm"),
       plot.margin = margin(t = 1, r = 5, b = 1, l = 5, unit = "pt"),
       # plot.margin    = margin(t = 2, r = 5, b = 2, l = 5, unit = "pt"), 
       # plot.title     = element_text(size = 8, angle = 90, hjust = 0, vjust = 0.5),
@@ -63,7 +84,7 @@ base_theme <- function(show_y_text = FALSE) {
 
 add_na_strike <- function(plot, data, var, color = "red", linewidth = 0.5, inset = 0.42) {
   na_df <- data %>%
-    mutate(y = 1, x = as.numeric(case_number)) %>%
+    mutate(y = 1, x = as.numeric(x_local)) %>%
     filter(is.na(.data[[var]]))
   
   if (nrow(na_df) == 0) return(plot)
@@ -82,12 +103,14 @@ plot_continuous <- function(data,
                             palette = NULL,
                             show_y_text = FALSE) {
   p <- ggplot(data, aes(y = 1, 
-                   x = case_number, 
+                   x = x_local, 
                    fill = .data[[var]])) +
     geom_tile(color = "black", 
               linewidth = 0.4) +
     labs(y = label,
          fill = label) +
+    scale_x_continuous(expand = c(0, 0)) +
+    facet_grid(~ group, scales = "free_x", space = "free_x") +
     base_theme(show_y_text)
   
   p <- add_na_strike(p, data, var)
@@ -108,11 +131,13 @@ plot_categorical <- function(data,
                              palette = NULL, 
                              show_y_text = FALSE) {
   p <- ggplot(data, aes(y = 1, 
-                        x = case_number, 
+                        x = x_local, 
                         fill = .data[[var]])) +
     geom_tile(color = "black", linewidth = 0.4) +
     labs(y = label,
          fill = label) +
+    scale_x_continuous(expand = c(0, 0)) +
+    facet_grid(~ group, scales = "free_x", space = "free_x") +
     base_theme(show_y_text)
   
   p <- add_na_strike(p, data, var)
@@ -128,53 +153,56 @@ plot_categorical <- function(data,
   }
 }
 
-df <- df %>% 
-  mutate(clinical_diagnosis = factor(clinical_diagnosis,
-                                     levels = c("Control", "ALS", "ALS-FTD"))) %>%
-  arrange(clinical_diagnosis, desc(c9orf72_mutation)) %>%
-  mutate(case_number = fct_inorder(case_number))
-
 p_c9 <- plot_categorical(df,
                  "c9orf72_mutation",
                  label = "C9orf72 HRE",
-                 palette = c("#D6249F", "#E5E1DC"))
+                 palette = c("#D6249F", "#E5E1DC")) + 
+  theme(strip.text.x = element_blank())
 
 p_onset <- plot_categorical(df,
                             "onset_site",
                             label = "Site of onset",
-                            palette = c("#FFD60A", "#8C7A1E", "#F0DE7D"))
+                            palette = c("#FFD60A", "#8C7A1E", "#F0DE7D")) + 
+  theme(strip.text.x = element_blank())
 
 p_age <- plot_continuous(df,
                 "age_at_death",
                 label = "Age at death",
-                palette = "ggthemes::Red")
+                palette = "ggthemes::Red") + 
+  theme(strip.text.x = element_blank())
 
 p_group <- plot_categorical(df,
                  "clinical_diagnosis",
-                 label = "Group",
-                 palette = c("#b8b0a8", "#6a3d9a", "#c3a6e1"))
+                 label = "Clinical diagnosis",
+                 palette = c("#b8b0a8", "#6a3d9a", "#c3a6e1")) + 
+  theme(strip.text = element_text(size = 12),
+        strip.background = element_rect(fill = "transparent", color = "black"))
 
 p_duration <- plot_continuous(df,
                 "disease_duration",
                 label = "Disease duration",
-                palette = "ggthemes::Green")
+                palette = "ggthemes::Green") + 
+  theme(strip.text.x = element_blank())
 
 p_sc <- plot_categorical(df,
                          "sc",
                          label = "scRNAseq",
                          palette = c("#00B4D8", "#E5E1DC")) + 
-  theme(legend.position = "none")
+  theme(legend.position = "none") + 
+  theme(strip.text.x = element_blank())
 
 p_ffpe <- plot_categorical(df,
                            "ffpe",
                            label = "Spatial biology",
                            palette = c("midnightblue", "#E5E1DC")) + 
-  theme(legend.position = "none")
+  theme(legend.position = "none") + 
+  theme(strip.text.x = element_blank())
 
 p_sex <- plot_categorical(df,
                  "sex",
                  label = "Sex",
-                 palette = c("#DB5500", "#FFCFA4"))
+                 palette = c("#DB5500", "#FFCFA4")) + 
+  theme(strip.text.x = element_blank())
 
 p <- p_group + p_c9 + p_age + p_sex + p_onset + p_duration + p_sc + p_ffpe +
   plot_layout(ncol = 1, widths = c(1.6, rep(1, 8))) +
@@ -188,17 +216,7 @@ p <- p_group + p_c9 + p_age + p_sex + p_onset + p_duration + p_sc + p_ffpe +
 ggsave(p,
        filename = paste0(results_dir, "demographics_heatmap.png"),
        units = "in", dpi = 600,
-       height = 2.75, width = 9.5)
-
-df <- df %>% 
-  mutate(group = case_when(c9orf72_mutation == "Y" ~ "C9orf72-ALS",
-                           clinical_diagnosis == "Control" ~ "Control",
-                           .default = "sALS") %>% 
-           factor(levels = c("Control", "sALS", "C9orf72-ALS")))
-
-write.csv(df,
-          file = "tab_data/organized_metadata_for_plotting.csv",
-          row.names = F)
+       height = 3.75, width = 10)
 
 # Age dot plot -----------------------------------------------------------
 
