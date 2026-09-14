@@ -1,31 +1,20 @@
-# Re-clusters the microglia object (data/19_subclustering3/microglia) at
-# several resolutions, picks the best one by graph modularity, and
-# cross-references the resulting clusters against milo.R's differential
-# neighborhood abundance results, so DA-neighborhood content can inform
-# manual subcluster labeling before those labels get folded back onto the
-# full CNS tissue object -- itself headed for use as the Cell2Location
-# reference against Visium data in the same tissues. Interactive script,
-# not a SLURM job (no array setup) -- the clustering/Milo sections below
-# are meant to run once and be inspected; final label assignment is done
-# by hand afterward (not implemented here, per the user).
+# Clusters the microglia object (data/19_subclustering3/microglia) at a
+# fixed resolution and cross-references the resulting clusters against
+# milo.R's differential neighborhood abundance results, so DA-neighborhood
+# content can inform manual subcluster labeling before those labels get
+# folded back onto the full CNS tissue object -- itself headed for use as
+# the Cell2Location reference against Visium data in the same tissues.
+# Interactive script, not a SLURM job (no array setup) -- the clustering/
+# Milo sections below are meant to run once and be inspected; final label
+# assignment is done by hand afterward (not implemented here, per the
+# user).
 #
 # Design notes:
-# - Resolution sweep uses 13_subclustering1.R/15_subclustering2.R's
-#   13-value resolution list and graph_modularity() helper (copied
-#   verbatim), not 10_clustering.R's 19-value full-tissue list -- this
-#   script re-clusters one already-subclustered cell type, the same scope
-#   as 13/15, not a whole tissue.
-# - RNA_snn already exists from the single FindNeighbors() call above (no
-#   return.neighbor = T companion call needed here, unlike 13/15's two-call
-#   pattern -- this script reuses 19_subclustering3.R's already-fit UMAP
-#   rather than computing a fresh one, so there's no RunUMAP() call that
-#   would need a Neighbor object).
-# - obj$seurat_clusters is explicitly reset to the best resolution's column
-#   after the sweep -- FindClusters() only ever overwrites seurat_clusters
-#   with the *last*-tested resolution (5, the top of res_tests), not
-#   necessarily the best one, and the DimPlot_scCustom()/dittoBarPlot()
-#   calls at the end (left untouched, per the user) reference
-#   seurat_clusters directly.
+# - Resolution is fixed at 0.8, per the user -- an earlier version of this
+#   script swept 13_subclustering1.R/15_subclustering2.R's 13-value
+#   resolution list and picked the best by graph modularity, but the user
+#   reviewed that output and settled on 0.8 directly, so the sweep is
+#   gone.
 # - Milo cross-reference (design choice, flagged rather than guessed
 #   silently -- no prior script in this project cross-references Milo
 #   results against a separate clustering, so there's no established
@@ -40,10 +29,25 @@
 #   neighborhood spans both tissues by construction (see milo.R's header),
 #   and its significance in one tissue's test is itself the whole point of
 #   sharing neighborhoods across tissues (spotting shared vs.
-#   tissue-specific change), so any member cell counts. If a different
-#   summary would be more useful once you're looking at it (e.g. mean
-#   logFC per cluster regardless of significance, or a direct UMAP
-#   overlay instead of a table/bar chart), easy to swap out -- say so.
+#   tissue-specific change), so any member cell counts.
+# - Second Milo view: a jittered dot plot with one dot per neighborhood
+#   (not per cell, unlike the bar chart above), x = the cluster of that
+#   neighborhood's own index cell, y = logFC, colored by significance.
+#   "The cluster a neighborhood belongs to" is necessarily an
+#   approximation -- a neighborhood is ~15 cells around an index cell and
+#   can span a cluster boundary -- so this uses the same index-cell
+#   convention milo_viz.R/milo_wgcna.R already established for
+#   representing one neighborhood by one cell, rather than inventing a
+#   new one.
+# - Note for later: SpatialFDR NA is coerced to 1 (-> not significant)
+#   before splitting into sig_up/sig_down for the bar chart, matching
+#   milo_viz.R's convention -- milo_wgcna.R instead preserves NA
+#   (untested/degenerate neighborhoods, e.g. ones barely present in a
+#   given tissue -- see its own header) as NA rather than collapsing to
+#   FALSE. Left as-is here since the bar chart code was to be kept
+#   unchanged, but worth knowing the new dot plot will show those
+#   degenerate neighborhoods as ordinary non-significant logFC == 0 points
+#   rather than flagging them as untested.
 # - milo.R's Milo object is built from this exact same
 #   data/19_subclustering3/microglia source (same script, no extra
 #   filtering in either place), so cell barcodes are expected to match
@@ -111,65 +115,13 @@ obj <- FindNeighbors(obj,
                      annoy.metric = "euclidean",
                      compute.SNN = T)
 
-# Cluster at several resolutions, scoring each by graph modularity ----------
-# Copied from 13_subclustering1.R -- see header note above.
+# Cluster at a fixed resolution -----------------------------------------
+# resolution = 0.8, per the user -- see header note above.
 
-graph_modularity <- function(obj, clusters, graph_name = "RNA_snn"){
-  snn <- as(obj[[graph_name]], "dgCMatrix")
-  g <- igraph::graph_from_adjacency_matrix(snn, mode = "undirected",
-                                           weighted = TRUE, diag = FALSE)
-  igraph::modularity(g, membership = as.integer(factor(clusters)))
-}
-
-res_tests <- c(0.2, 0.4, 0.6, 0.8, 1, 1.2, 1.4, 1.6, 1.8, 2, 3, 4, 5)
-
-modularity_vec <- numeric(length(res_tests))
-
-for (i in seq_along(res_tests)){
-  res <- res_tests[i]
-  message2(paste0("Clustering at resolution = ", res))
-
-  obj <- FindClusters(obj,
-                      resolution = res,
-                      algorithm = 4,
-                      graph.name = "RNA_snn",
-                      cluster.name = paste0("res", res, "_clusters"),
-                      method = "igraph")
-
-  modularity_vec[i] <- graph_modularity(obj,
-                                        obj@meta.data[[paste0("res", res, "_clusters")]])
-}
-
-message2("Saving graph modularity table and plot")
-
-modularity_df <- data.frame(resolution = res_tests, modularity = modularity_vec)
-
-write.csv(modularity_df,
-          file = paste0(results_dir, "graph_modularity.csv"),
-          row.names = F)
-
-p <- ggplot(modularity_df, aes(x = resolution, y = modularity)) +
-  geom_line() +
-  geom_point() +
-  theme_bw() +
-  theme(axis.text = element_text(color = "black"))
-ggsave(p,
-       filename = paste0(results_dir, "graph_modularity.png"),
-       units = "in", dpi = 300,
-       height = 4, width = 6)
-
-# Pick the resolution with the highest graph modularity ----------------------
-
-best_res <- res_tests[which.max(modularity_vec)]
-best_res_col <- paste0("res", best_res, "_clusters")
-
-message2(paste0("Best resolution = ", best_res))
-
-Idents(obj) <- best_res_col
-# seurat_clusters is reset here since FindClusters() left it pointing at
-# the last-tested resolution, not necessarily the best one -- see header
-# note above.
-obj$seurat_clusters <- Idents(obj)
+obj <- FindClusters(obj,
+                    algorithm = 4,
+                    method = "igraph",
+                    resolution = 0.8)
 
 # Bring in Milo differential neighborhood abundance results -----------------
 # See header note above for the full design rationale.
@@ -201,10 +153,20 @@ combos <- tribble(
 ) %>%
   mutate(comparison = paste0(tissue_short, "_", contrast_short))
 
-clusters <- obj@meta.data[[best_res_col]]
+clusters <- obj$seurat_clusters
 names(clusters) <- colnames(obj)
 
+# Neighborhood -> cluster lookup for the dot plot below -- one row per
+# neighborhood, cluster of its own index cell (see header note above).
+nhood_index_rows <- unlist(nhoodIndex(milo))
+nhood_cells <- colnames(milo)[nhood_index_rows]
+nhood_cluster_lookup <- data.frame(
+  Nhood = seq_along(nhood_index_rows),
+  cluster = as.character(clusters[nhood_cells])
+)
+
 milo_summary <- list()
+nhood_level <- list()
 
 for (i in seq_len(nrow(combos))){
 
@@ -254,9 +216,18 @@ for (i in seq_len(nrow(combos))){
     mutate(comparison = comparison)
 
   milo_summary[[comparison]] <- summary_i
+
+  # One row per neighborhood (not per cell) for the dot plot below --
+  # reuses this same res/sig computation rather than re-reading the CSV.
+  nhood_level[[comparison]] <- res %>%
+    mutate(sig = SpatialFDR < 0.05) %>%
+    dplyr::select(Nhood, logFC, sig) %>%
+    left_join(nhood_cluster_lookup, by = "Nhood") %>%
+    mutate(comparison = comparison)
 }
 
 milo_summary_df <- list_rbind(milo_summary)
+nhood_level_df <- list_rbind(nhood_level)
 
 message2("Saving cluster/Milo summary table and plot")
 
@@ -285,6 +256,25 @@ ggsave(p,
        height = 6, width = 8)
 
 p
+
+# Jittered dot plot: one dot per neighborhood, x = cluster of its index
+# cell, y = logFC -- see header note above.
+
+p2 <- nhood_level_df %>%
+  ggplot(aes(x = cluster, y = logFC, color = sig)) +
+  geom_jitter(width = 0.2, height = 0, alpha = 0.6) +
+  facet_wrap(. ~ comparison) +
+  labs(x = "Cluster (of neighborhood's index cell)", y = "logFC",
+      color = "Significant\n(SpatialFDR < 0.05)") +
+  scale_color_manual(values = c("TRUE" = "firebrick", "FALSE" = "grey60")) +
+  theme_bw() +
+  theme(axis.text = element_text(color = "black"))
+ggsave(p2,
+       filename = paste0(results_dir, "cluster_milo_nhood_dotplot.png"),
+       units = "in", dpi = 300,
+       height = 6, width = 8)
+
+p2
 
 DimPlot_scCustom(obj,
                  label = F) +
