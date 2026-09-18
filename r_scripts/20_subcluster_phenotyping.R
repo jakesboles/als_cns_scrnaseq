@@ -326,3 +326,103 @@ saveRDS(full_meta,
         file = paste0(data_dir, "full_metadata.rds"))
 saveRDS(microglia_meta,
         file = paste0(data_dir, "microglia_metadata.rds"))
+
+# Extra plotting  ---------------------------------------------------------
+
+# if running after the initial run of the above script:
+markers <- read.csv(paste0(results_dir, "cluster_markers.csv"))
+new_meta <- readRDS(paste0(data_dir, "microglia_metadata.rds"))
+obj <- AddMetaData(obj, new_meta)
+# obj$group <- factor(obj$group,
+#                     levels = c("Control", "sALS", "C9orf72"),
+#                     labels = c("Control", "sALS", "C9orf72-ALS"))
+
+DimPlot_scCustom(obj,
+                 group.by = "cell_type4",
+                 pt.size = 1, # comment out if running smaller object
+                 colors_use = paletteer_d("ggsci::default_locuszoom")[c(1:3, 5:6)]) + 
+  ggtitle("Microglia sub-cluster") + 
+  guides(color = guide_legend(ncol = 1,
+                              override.aes = list(size = 4)))
+ggsave(filename = paste0(results_dir, "subcluster_dimplot.png"),
+       units = "in", dpi = 300,
+       height = 4, width = 5)
+
+top <- markers %>% 
+  filter(pct.1 > 0.3 & avg_log2FC > 0) %>% 
+  Extract_Top_Markers(num_features = 10,
+                      make_unique = F,
+                      named_vector = F)
+
+markers %>% 
+  filter(cluster == 4 & 
+           pct.1 > 0.3) %>% 
+  arrange(desc(avg_log2FC)) %>% head(30)
+
+dittoDotPlot(obj,
+             vars = top,
+             group.by = "cell_type4") + 
+  scale_y_discrete(limits = rev) + 
+  scale_color_gradient2() +
+  labs(y = "Subtype",
+       size = "pct",
+       color = "exp")
+ggsave(filename = paste0(results_dir, target, "/marker_dotplot.png"),
+       units = "in", dpi = 600,
+       height = 4, width = 15)
+
+br_cells <- obj@meta.data %>% 
+  filter(tissue == "Motor cortex") %>% 
+  rownames()
+
+sc_cells <- obj@meta.data %>% 
+  filter(tissue == "Cervical spinal cord") %>% 
+  rownames()
+
+p1 <- dittoBarPlot(obj,
+             group.by = "cell_type4",
+             var = "group",
+             scale = "count",
+             cells.use = br_cells,
+             var.labels.reorder = c(2, 3, 1),
+             color.panel = c("#b8b0a8", "#0CAA00", "#CC00FF")) + 
+  scale_y_continuous(expand = c(0, 0)) +
+  ggtitle("Motor cortex") + 
+  theme(axis.title.x = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+
+p2 <- dittoBarPlot(obj,
+             group.by = "cell_type4",
+             var = "group",
+             scale = "count",
+             cells.use = sc_cells,
+             var.labels.reorder = c(2, 3, 1),
+             color.panel = c("#b8b0a8", "#0CAA00", "#CC00FF")) + 
+  scale_y_continuous(expand = c(0, 0)) +
+  ggtitle("Cervical spinal cord") + 
+  theme(axis.title.x = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+
+p1 + p2 + 
+  plot_layout(ncol = 1,
+              guides = "collect")
+ggsave(filename = paste0(results_dir, "subcluster_by_group_by_tissue_bars.png"),
+       units = "in", dpi = 600,
+       height = 8, width = 5)
+
+modules <- read.csv("results/wgcna_consensus/Microglia/module_scores_ucell.csv")
+modules <- modules %>% 
+  column_to_rownames(var = "X")
+
+obj <- AddMetaData(obj, 
+                   modules)
+
+VlnPlot_scCustom(obj,
+                 features = c("blue_UCell_kNN", "turquoise_UCell_kNN"),
+                 group.by = "cell_type4",
+                 num_columns = 1,
+                 colors_use = paletteer_d("ggsci::default_locuszoom")[c(1:3, 5:6)]) + 
+  theme(axis.title.x = element_blank())
+ggsave(filename = paste0(results_dir, "subcluster_wgcna_module_scores_vln.png"),
+       units = "in", dpi = 600,
+       height = 8, width = 4)
