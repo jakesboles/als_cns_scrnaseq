@@ -104,6 +104,7 @@ suppressMessages({
   library(scater)
   library(Matrix)
   library(ggExtra)
+  library(patchwork)
 })
 
 message2 <- function(text){
@@ -334,18 +335,38 @@ comparison_df <- list_rbind(comparison_rows)
 #     logFC_bw = MASS::bandwidth.nrd(logFC)
 #   )
 
-p <- comparison_df %>%
-  filter(sig == TRUE & logFC > 0) %>%
+module <- "blue"
+
+p1 <- comparison_df %>%
+  filter(sig == TRUE & logFC > 0 & 
+           str_detect(comparison, "C9")) %>%
+  mutate(tissue = str_split_i(comparison, "_", i = 1) %>% 
+           factor(levels = c("brain", "sc"),
+                  labels = c("Motor cortex", "Cervical spinal cord"))) %>%
+  # mutate(group = case_when(str_detect(comparison, "C9") ~ "C9orf72-ALS",
+  #                          str_detect(comparison, "sALS") ~ "sALS") %>% 
+  #          factor(levels = c("sALS", "C9orf72-ALS"))) %>%
   na.omit() %>%
-  ggplot(aes(x = blue, y = logFC)) +
+  ggplot(aes(x = !!sym(module), y = logFC)) +
   # geom_density_2d(aes(color = comparison), contour_var = "ndensity") +
-  geom_point(aes(color = comparison), alpha = 0.7, size = 3) +
+  geom_point(aes(color = tissue), alpha = 0.7, size = 3) +
+  scale_color_manual(values = c("#EFC000", "#0073C2")) +
+  labs(y = "Nhood log2FC",
+       x = paste0(str_to_title(module), " module score")) +
   # facet_wrap(. ~ comparison, scales = "fixed") +
   # scale_color_viridis_c() +
-  theme_linedraw()
+  ggtitle(paste0(str_to_title(module), " expression vs\nNhood fold change in C9orf72-ALS")) +
+  theme_linedraw() + 
+  theme(legend.position = "bottom",
+        legend.title = element_blank(),
+        plot.title = element_text(hjust = 0.5))
 
-ggMarginal(p, type = "histogram",
+p1h <- ggMarginal(p1, type = "density",
            groupFill = T)
+ggsave(p1h,
+       filename = paste0(out_dir, module, "_vs_milo_fc.png"),
+       units = "in", dpi = 600,
+       height = 5, width = 5)
 
 # find a good way to statistically analyze the effect of comparison on the 
 # relationship between logFC and module score
