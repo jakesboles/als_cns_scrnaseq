@@ -116,7 +116,7 @@ sig_cells_guide <- stats %>%
 # further visual tuning once you can see real output, especially for the
 # 3-significant-comparison case.
 
-step_increase <- 0.12 # bracket-to-bracket vertical spacing fraction -- change as needed, and update top_expansion below to match if you do
+step_increase <- 0.15 # bracket-to-bracket vertical spacing fraction -- change as needed, and update top_expansion below to match if you do
 
 for (i in 1:nrow(sig_cells_guide)) {
   tissue <- sig_cells_guide$tissue2[i]
@@ -139,7 +139,7 @@ for (i in 1:nrow(sig_cells_guide)) {
   # bracket/label plus a per-bracket increment for each additional one --
   # larger than step_increase alone, since expansion is now the only
   # lever reserving space within a fixed-height panel (see note above).
-  top_expansion <- 0.20 + 0.22 * max(n_sig - 1, 0)
+  top_expansion <- 0.1 * max(n_sig - 1, 0)
 
   p <- df %>%
     ggplot(aes(x = group,
@@ -156,9 +156,9 @@ for (i in 1:nrow(sig_cells_guide)) {
                  linewidth = 1.2,
                  width = 0.6) +
     geom_pwc(method = "tukey_hsd",
-             hide.ns = T,
+             hide.ns = F,
              step.increase = step_increase,
-             bracket.nudge.y = -0.05) +
+             label = "p = {p.adj.format}") +
     scale_y_continuous(expand = expansion(mult = c(0.05, top_expansion))) +
     scale_fill_manual(values = c("#b8b0a8", "#CC00FF", "#0CAA00")) +
     labs(y = "% of all cells") +
