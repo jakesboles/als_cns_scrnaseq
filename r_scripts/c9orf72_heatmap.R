@@ -49,6 +49,19 @@
 #   meaningful the way it is within one tissue's own set of cell types.
 # - No R environment available in this session to run/verify any of
 #   this -- first draft, pending your own run.
+# - Raw count diagnostic table: per (sample, cell_type3, tissue), the raw
+#   (unnormalized) C9orf72 count -- n_cells, total_count, mean_count, and
+#   pct_detected (fraction of cells with count > 0), plus that sample's
+#   group for convenience. Pulled from data/06_obj_reassembly/bpcells (the
+#   whole-cohort real raw counts), not data/17_obj_reassembly's own
+#   bpcells_data -- that holds normalized data, not counts (see this
+#   project's own CLAUDE.md gotcha on this). "Sample" = orig.ident
+#   (donor + tissue), this project's standard per-sample key. Unlike the
+#   heatmap, this table is NOT restricted to keep_types (> min_cells cell
+#   types) -- the whole point of a diagnostic table is to also be able to
+#   check the cell types/samples the heatmap filters out, e.g. to confirm
+#   a low heatmap value isn't actually an artifact of very few cells or
+#   very low detection.
 
 suppressMessages({
   library(Seurat)
@@ -62,6 +75,9 @@ setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
 figures_dir <- "figures/"
 dir.create(figures_dir, showWarnings = F, recursive = T)
+
+results_dir <- "results/c9orf72_heatmap/"
+dir.create(results_dir, showWarnings = F, recursive = T)
 
 gene <- "C9orf72"
 min_cells <- 500 # change as needed -- see header note above
@@ -133,15 +149,58 @@ make_tissue_heatmap <- function(tissue_file, tissue_title){
                 main = tissue_title,
                 silent = TRUE)
 
-  return(ht)
+  # Raw count diagnostic table -- see header note above. Real raw counts,
+  # not this tissue's own (normalized) bpcells_data.
+  message(paste0("Reading raw counts for ", tissue_title))
+
+  raw_mat <- open_matrix_dir("data/06_obj_reassembly/bpcells")
+  raw_mat <- raw_mat[, rownames(meta)]
+
+  if (!(gene %in% rownames(raw_mat))){
+    stop(paste0(gene, " not found in the whole-cohort raw count matrix -- ",
+                "check data/06_obj_reassembly/bpcells."))
+  }
+
+  raw_gene_row <- raw_mat[gene, , drop = F]
+  raw_counts <- as.numeric(as.matrix(raw_gene_row))
+  names(raw_counts) <- colnames(raw_mat)
+
+  raw_df <- data.frame(cell = names(raw_counts), count = raw_counts) %>%
+    left_join(meta %>% rownames_to_column("cell") %>%
+                dplyr::select(cell, cell_type3, orig.ident, group),
+              by = "cell") %>%
+    mutate(group = factor(group, levels = c("Control", "sALS", "C9orf72"),
+                          labels = c("Control", "sALS", "C9orf72-ALS")))
+
+  raw_summary <- raw_df %>%
+    group_by(orig.ident, group, cell_type3) %>%
+    summarise(n_cells = n(),
+             total_count = sum(count),
+             mean_count = mean(count),
+             pct_detected = mean(count > 0),
+             .groups = "drop") %>%
+    mutate(tissue = tissue_title) %>%
+    dplyr::rename(sample = orig.ident) %>%
+    relocate(tissue, sample, group, cell_type3)
+
+  return(list(heatmap = ht, raw_counts = raw_summary))
 }
 
-heatmaps <- Map(make_tissue_heatmap, tissues$file, tissues$title)
+results <- Map(make_tissue_heatmap, tissues$file, tissues$title)
 
-p <- wrap_plots(lapply(heatmaps, function(h) wrap_elements(full = h$gtable)),
-               ncol = length(heatmaps))
+p <- wrap_plots(lapply(results, function(r) wrap_elements(full = r$heatmap$gtable)),
+               ncol = length(results))
 
 ggsave(p,
        filename = paste0(figures_dir, "c9orf72_heatmap.png"),
        units = "in", dpi = 600,
        height = 6, width = 12)
+
+message("Saving raw count diagnostic table")
+
+raw_counts_all <- lapply(results, function(r) r$raw_counts) %>%
+  list_rbind()
+
+write.csv(raw_counts_all,
+          file = paste0(results_dir, "raw_counts_by_sample.csv"),
+          row.names = F)
