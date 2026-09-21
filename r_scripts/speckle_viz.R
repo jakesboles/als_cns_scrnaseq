@@ -91,20 +91,30 @@ sig_cells_guide <- stats %>%
                              tissue == "Skeletal muscle" ~ "muscle"))
 
 # geom_pwc() stacks one bracket per significant pairwise comparison above
-# the tallest point, but neither the panel's y-expansion nor ggsave()'s
-# saved height account for how many brackets end up stacked -- with a
-# fixed height = 3in, 2-3 stacked brackets (as for most of these cells,
-# since 3 groups -> up to 3 pairwise comparisons) run off the top of the
-# saved file even though the plot looks fine interactively (where the
-# device auto-sizes). Both the top expansion and the saved height are
-# made a function of n_sig (how many pairwise comparisons are actually
-# significant, hide.ns = T drops the rest) instead of a fixed guess, so a
-# cell with only 1 significant comparison isn't given unnecessary
-# headroom and one with 3 gets enough. step.increase (bracket-to-bracket
-# vertical spacing, as a fraction of the y-range) is set explicitly here
-# so the expansion formula's assumptions about ggpubr's own spacing match
-# what's actually drawn, rather than guessing blind at both ends
-# independently.
+# the tallest point, but the panel's y-expansion didn't account for how
+# many brackets end up stacked -- with up to 3 pairwise comparisons (3
+# groups), 2-3 stacked brackets ran off the top of the saved file even
+# though the plot looked fine interactively (where the device auto-sizes).
+# The top expansion is made a function of n_sig (how many pairwise
+# comparisons are actually significant, hide.ns = T drops the rest)
+# instead of a fixed guess, so a cell with only 1 significant comparison
+# isn't given unnecessary headroom and one with 3 gets enough.
+# step.increase (bracket-to-bracket vertical spacing, as a fraction of the
+# y-range) is set explicitly here so the expansion formula's assumptions
+# about ggpubr's own spacing match what's actually drawn.
+#
+# Per the user, the saved file height stays fixed (ggsave() below is back
+# to height = 3, not scaled by n_sig) -- expansion is the only lever now,
+# so it has to reserve enough of that *fixed* panel for the brackets
+# rather than getting help from a taller canvas. The real tradeoff: for a
+# cell with 2-3 significant comparisons, the data points themselves get
+# visually compressed into a smaller fraction of the fixed panel height,
+# since more of that same fixed space is reserved for brackets at the
+# top. The constants below (0.2 base, 0.22 per extra bracket) are a
+# first-pass estimate, not a rendered/verified fit -- no R environment
+# available here to check actual pixel output, so these may need
+# further visual tuning once you can see real output, especially for the
+# 3-significant-comparison case.
 
 step_increase <- 0.12 # bracket-to-bracket vertical spacing fraction -- change as needed, and update top_expansion below to match if you do
 
@@ -126,8 +136,10 @@ for (i in 1:nrow(sig_cells_guide)) {
   n_sig <- sum(tukey_res$p.adj < 0.05, na.rm = T)
 
   # Headroom above the tallest point: a base allowance for the first
-  # bracket/label plus step_increase per additional stacked bracket.
-  top_expansion <- 0.15 + step_increase * max(n_sig - 1, 0)
+  # bracket/label plus a per-bracket increment for each additional one --
+  # larger than step_increase alone, since expansion is now the only
+  # lever reserving space within a fixed-height panel (see note above).
+  top_expansion <- 0.20 + 0.22 * max(n_sig - 1, 0)
 
   p <- df %>%
     ggplot(aes(x = group,
@@ -159,5 +171,5 @@ for (i in 1:nrow(sig_cells_guide)) {
   ggsave(p,
          filename = paste0(plots_dir, "speckle_dots_", cell, "_", tissue, ".png"),
          units = "in", dpi = 600,
-         height = 3 + 0.5 * n_sig, width = 3)
+         height = 3, width = 3)
 }
