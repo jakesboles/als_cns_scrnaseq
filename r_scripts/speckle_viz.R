@@ -2,6 +2,7 @@ library(tidyverse)
 library(ggplot2)
 library(ggrepel)
 library(ggbeeswarm)
+library(ggpubr)
 
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
@@ -93,10 +94,12 @@ for (i in 1:nrow(sig_cells_guide)) {
   cell <- sig_cells_guide$X[i]
   cell <- str_replace_all(cell, " ", ".")
   
-  props[[tissue]] %>%
+  df <- props[[tissue]] %>%
     mutate(group = factor(group,
                           levels = c("Control", "sALS", "C9orf72"),
-                          labels = c("Control", "sALS", "C9orf72-ALS"))) %>% 
+                          labels = c("Control", "sALS", "C9orf72-ALS")))
+  
+  df %>%
     ggplot(aes(x = group,
                y = !!sym(cell))) + 
     geom_quasirandom(aes(fill = group),
@@ -110,6 +113,9 @@ for (i in 1:nrow(sig_cells_guide)) {
                  geom = "errorbar",
                  linewidth = 1.2,
                  width = 0.6) +
+    geom_pwc(method = "tukey_hsd",
+             hide.ns = T,
+             bracket.nudge.y = -0.05) +
     scale_fill_manual(values = c("#b8b0a8", "#CC00FF", "#0CAA00")) + 
     labs(y = "% of all cells") +
     ggtitle(paste0(str_replace_all(cell, "[.]", " "), " in\n", str_to_lower(sig_cells_guide$tissue[i]))) +
