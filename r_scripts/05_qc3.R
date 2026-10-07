@@ -1,3 +1,7 @@
+# Makes pre/post-filter QC summary plots from the per-sample metadata
+# produced earlier in the QC pipeline. Plotting only, no new objects or
+# matrices saved; not part of the SLURM job chain.
+
 suppressMessages({
   library(tidyverse)
   library(ggplot2)

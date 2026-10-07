@@ -1,3 +1,7 @@
+# Cell-type proportion differential abundance testing (speckle::propeller())
+# between disease groups, per tissue, plus per-sample cell-type frequency
+# tables. Interactive script, not a SLURM job.
+
 library(speckle)
 library(Seurat)
 library(ggplot2)

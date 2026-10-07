@@ -1,58 +1,9 @@
-# Ports 18_full_integration.R from the earlier version of the project.
-# Runs as a 2-task SLURM job array (see jobs/18_full_integration.sh): one
-# task integrates all 3 tissues, the other integrates brain + sc only
-# (matching what the old script actually did -- it never included
-# muscle).
-#
-# Design notes:
-# - Loads only 17_obj_reassembly.R's per-tissue metadata (cleaned,
-#   cell_type1/2/3-annotated, "Remove" cells already excluded) -- not its
-#   normalized expression data or Harmony embedding, neither of which is
-#   needed here. Expression is instead pulled fresh from
-#   data/06_obj_reassembly/bpcells (real raw counts, subset to the
-#   retained cell barcodes across all tissues being integrated) and
-#   re-normalized/re-scaled/re-PCA'd on the combined population, for the
-#   same reason 13/15/17 needed real counts: this pipeline's "counts"
-#   layer has held normalized data since 09_integration, and
-#   FindVariableFeatures()'s default VST fit needs real counts.
-# - RunPCA() uses npcs = 100, matching this project's other full-object-
-#   scale scripts (07_norm_pca.R, 17_obj_reassembly.R) rather than the
-#   old script's unstated Seurat default of 50 -- confirmed with the
-#   user, since this integration spans an even larger, more heterogeneous
-#   population than any single tissue.
-# - Integration uses dims = 1:20 for both IntegrateLayers() and
-#   FindNeighbors()/RunUMAP() -- the old script used 1:15, which the user
-#   flagged as wrong.
-# - IntegrateLayers() uses this project's established plain Harmony call
-#   (method = "HarmonyIntegration", orig.reduction = "pca", dims = 1:20)
-#   -- the old script's k.anchor/reference arguments are CCA-specific
-#   leftovers from before this project switched to Harmony and don't
-#   apply to HarmonyIntegration, so they're dropped rather than carried
-#   forward.
-# - FindNeighbors()/RunUMAP() match 10_clustering.R/13/15/17's
-#   established block (nn.name = "RNA.nn", return.model = T), rather than
-#   the old script's version (which never wired up nn.name and had a
-#   half-finished, partly commented-out second RunUMAP() call).
-# - Plots use cell_type3 (this project's final annotation) in place of
-#   the old script's final_label2, and this project's lowercase metadata
-#   column names (batch/tissue/group) in place of the old Batch/Group.
-# - Saved as BPCells-ready files (metadata, normalized expression,
-#   Harmony embedding, UMAP) instead of the old script's single whole-
-#   object saveRDS() -- covers what's needed for figures (DimPlot/
-#   FeaturePlot) and for hdWGCNA/MiloR, both of which build their own kNN
-#   graphs from a stored embedding rather than needing Seurat's
-#   FindNeighbors() graph objects saved separately.
-# - RunUMAP() switched from the graph-based nn.name = "RNA.nn" approach
-#   (matching 10/13/15/17) to running directly off the "harmony"
-#   reduction, per the user, after the graph-based UMAP didn't look
-#   right. That switch caused a segfault on the brain_sc target inside
-#   RunUMAP()'s default spectral initialization (RSpectra::eigs_sym) --
-#   NOT explained by brain_sc's cell count, since the larger all_tissues
-#   target runs the identical call without issue. See the comment above
-#   that RunUMAP() call for the current (still not fully confirmed)
-#   hypothesis, the `uwot.init = "pca"` fix, a duplicate/non-finite
-#   diagnostic check added alongside it, and the accompanying
-#   `n_neighbors` -> `n.neighbors` typo fix.
+# Cross-tissue Harmony integration on top of 17_obj_reassembly.R's final
+# per-tissue objects, for analyses spanning multiple tissues: rebuilds
+# from real raw counts, re-normalizes/re-PCAs the combined population,
+# integrates with Harmony, and computes one diagnostic UMAP. Runs as a
+# SLURM job array (see jobs/18_full_integration.sh), one task per target
+# (all 3 tissues, and brain + cervical spinal cord only).
 
 suppressMessages({
   library(Seurat)

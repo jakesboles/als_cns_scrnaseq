@@ -1,80 +1,9 @@
-# Three DESeq2/GSEA visualization sections for microglia, all reusing the
-# same celltype/results_dir/plots_dir set up front. Standalone script,
-# not part of the array job chain (matching demographics_figure.R's
-# precedent) -- everything here reads a handful of small CSVs and draws
-# plots, no Seurat/BPCells/heavy compute involved.
-#
-# 1. Upset plot of microglia DEGs (sALS vs. Control and C9orf72 vs.
-#    Control, in both motor cortex and cervical spinal cord -- 4 sets,
-#    all pairwise/higher-order overlaps shown) from deseq2.R's output.
-# 2. plot_fc_scatter(): a function (not a fixed block, since the user
-#    wants this flexible) plotting any two (tissue, contrast)
-#    comparisons' log2FoldChange against each other for genes
-#    significant in at least one of the two, colored by which
-#    comparison(s) each gene is significant in.
-# 3. A lollipop chart of the top dysregulated pathways (by p.adjust)
-#    across all 4 comparisons (2 tissues x 2 groups) from
-#    deseq2_gsea.R's GSEA output, colored by group and shaped by tissue.
-#
-# Reworked from the user's pushed sample script (from a different, older
-# project's own DESeq2 visualization) for section 1, and from the user's
-# own description (sections 2-3 had no sample code). Changes/design
-# choices, section 1:
-# - Input paths point at deseq2.R's actual output structure:
-#   results/deseq2/<tissue>/<cell type>/<contrast>.csv, with tissue file
-#   names "brain"/"sc" (not "Brain"/"SpinalCord") and contrast file names
-#   "sALS_vs_Control.csv"/"C9orf72_vs_Control.csv" (not a
-#   "DESeq2_DEGs.csv" per cell type).
-# - Reads the raw (non-LFC-shrunk) results CSVs, not
-#   *_lfc_shrunk.csv -- matching deseq_viz1.R's own established DEG-
-#   counting convention already used elsewhere in this project (same
-#   p < 0.05 & abs(log2FoldChange) > log2(1.5) thresholds on the same raw
-#   files), for consistency with that existing analysis rather than
-#   introducing a second, differently-thresholded definition of "DEG" in
-#   parallel.
-# - Gene identifiers are pulled from the "X" column, not "gene" --
-#   deseq2.R's write.csv() calls don't set row.names = F, so the gene
-#   symbols (results()'s rownames) get written as an unnamed first column
-#   that read.csv() reads back in as "X" (same column deseq_viz1.R itself
-#   reads from).
-# - Added a file-existence check before reading, matching deseq_viz1.R's
-#   own precedent -- deseq2.R skips a (tissue, cell type) combination
-#   entirely if it's too sparse for pseudobulk DESeq2, so a missing file
-#   here is a real possibility, not just a typo'd path.
-# - Output goes to figures/ (already covered by .gitignore), not
-#   results/deseq_viz2/ -- distinct from this project's usual per-script
-#   results/ convention, since these are meant as curated, presentation-
-#   ready figures rather than per-script diagnostic output.
-#
-# Design choices, section 2 (plot_fc_scatter()):
-# - Same raw results CSVs and "X" gene column as section 1, for the same
-#   consistency reason. Only genes significant (same thresholds as
-#   section 1) in at least one of the two chosen comparisons are plotted
-#   -- "plots of significant DEGs", not the whole transcriptome.
-# - celltype is not a function argument -- reused from the top of the
-#   script, since this whole file is scoped to microglia. tissue/contrast
-#   are the two axes the user can vary, matching their own example
-#   (same group, different tissue).
-# - Returns the ggplot object rather than saving it, since the specific
-#   pair of comparisons varies by call -- there's no single sensible
-#   fixed output filename the way section 1's upset plot has one.
-#
-# Design choices, section 3 (GSEA lollipop):
-# - Reads deseq2_gsea.R's saved
-#   results/deseq2/<tissue>/<celltype>/<contrast>_GSEA.csv files (GSEA()
-#   results, not DESeq2 results) for microglia, both tissues, both
-#   groups. GSEA()'s own default pvalueCutoff already restricts what
-#   deseq2_gsea.R saved to nominally significant pathways, so no
-#   additional significance filter is applied here.
-# - "Top dysregulated" = top_n pathways per comparison by p.adjust
-#   (default 10, change as needed); the *union* of those across all 4
-#   comparisons is plotted, not just one comparison's top list, so a
-#   pathway's behavior can be compared across tissue/group even where it
-#   wasn't top-ranked in every comparison.
-# - This section builds and saves its own plot (unlike section 2) --
-#   unlike the flexible fold-change scatter, this is a complete, specific
-#   request (all 4 comparisons, a fixed color/shape encoding), so it gets
-#   a real output file the same way section 1 does.
+# Three DESeq2/GSEA visualizations for microglia: an upset plot of DEGs
+# (sALS vs. Control and C9orf72 vs. Control, in both motor cortex and
+# cervical spinal cord), a flexible fold-change scatter function between
+# any two chosen (tissue, contrast) comparisons, and a GSEA lollipop
+# chart of top dysregulated pathways across all 4 tissue/group
+# comparisons. Interactive script, not a SLURM job.
 
 library(tidyverse)
 library(ComplexUpset)

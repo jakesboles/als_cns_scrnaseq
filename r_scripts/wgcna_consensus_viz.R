@@ -1,3 +1,8 @@
+# Visualizes wgcna_consensus_cns.R's microglia output for a few modules
+# of interest: kME bar plots, per-module expression plots (single-cell
+# and pseudobulk), and UMAP feature plots. Interactive script, not a
+# SLURM job.
+
 library(tidyverse)
 library(ggplot2)
 library(scCustomize)

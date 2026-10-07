@@ -1,73 +1,10 @@
 # Multi-panel heatmap of C9orf72 expression by cell type and disease
-# group, one panel per tissue -- modeled on Fig. 1g of
-# https://www.nature.com/articles/s41593-026-02300-5 (their PBMC C9orf72
-# expression heatmap), adapted for this project's 3 tissues instead of
-# one PBMC panel.
-#
-# Design notes:
-# - Source: data/17_obj_reassembly/<tissue>/{bpcells_data,metadata.rds} --
-#   the terminal, fully-annotated per-tissue object (cell_type3, "Remove"
-#   cells already dropped), the standard source for an "every cell type,
-#   one tissue" figure in this project.
-# - Cell type inclusion (changed from the reference figure's flat "> 500
-#   cells" note, per the user): a cell_type3 is shown for a given tissue
-#   only if its raw C9orf72 count sums to >= min_sample_count (10) in at
-#   least min_sample_fraction (1/3) of that tissue's samples. This reuses
-#   the same per-(sample, cell_type3) total_count the raw count
-#   diagnostic table below already computes -- one raw-count pass now
-#   drives both the heatmap's cell type filter and the diagnostic table,
-#   rather than the old flat total-cell-count threshold and the raw
-#   counts being two unrelated things. "At least 1/3 of samples" is
-#   implemented as n_samples_passing >= n_samples * min_sample_fraction
-#   (no explicit rounding needed -- an integer count can't satisfy a
-#   fractional threshold like 3 >= 3.33, so this already behaves like a
-#   ceiling for non-exact-thirds sample counts).
-# - Expression value: mean log-normalized ("data" layer) C9orf72
-#   expression per (cell_type3, group), computed manually via rowMeans()
-#   rather than Seurat's AverageExpression() -- AverageExpression()
-#   exponentiates back to linear scale before averaging by default
-#   (return.seurat = FALSE), which isn't wanted here; computing directly
-#   on the log-normalized layer avoids that surprise and matches how this
-#   project handles expression elsewhere (raw log-normalized "data", not
-#   Seurat's own un-logging shortcut).
-# - Heatmap color scale: row-scaled (z-scored across groups within each
-#   cell type), via pheatmap's own scale = "row" -- matches the
-#   reference figure's symmetric ~-1 to 1 diverging scale, and shows
-#   "which group is relatively high/low for this cell type" rather than
-#   raw expression (which would mostly just reflect each cell type's
-#   overall expression level, not group differences).
-# - Row clustering only (cluster_rows = TRUE, cluster_cols = FALSE) --
-#   matches the reference figure's dendrogram on cell types but a fixed,
-#   meaningful column order (Control -> sALS -> C9orf72-ALS), not a
-#   clustered column order.
-# - Uses pheatmap for the per-tissue dendrogram + heatmap -- this
-#   project's first use of it (may need installing on the cluster:
-#   install.packages("pheatmap")). ggplot2's geom_tile() can't natively
-#   draw a dendrogram, and pheatmap is the standard tool for exactly this
-#   kind of clustered expression heatmap; flagging the new dependency
-#   since every other script in this project sticks to packages already
-#   in use. Panels are combined into one multi-panel figure via
-#   patchwork::wrap_elements() around each pheatmap's $gtable, per the
-#   request for one combined file rather than 3 separate ones.
-# - Each tissue panel is scaled/colored independently (its own z-score,
-#   its own legend) -- cell type vocabularies differ substantially by
-#   tissue, so a single shared color scale across all three wouldn't be
-#   meaningful the way it is within one tissue's own set of cell types.
-# - No R environment available in this session to run/verify any of
-#   this -- first draft, pending your own run.
-# - Raw count diagnostic table: per (sample, cell_type3, tissue), the raw
-#   (unnormalized) C9orf72 count -- n_cells, total_count, mean_count, and
-#   pct_detected (fraction of cells with count > 0), plus that sample's
-#   group for convenience. Pulled from data/06_obj_reassembly/bpcells (the
-#   whole-cohort real raw counts), not data/17_obj_reassembly's own
-#   bpcells_data -- that holds normalized data, not counts (see this
-#   project's own CLAUDE.md gotcha on this). "Sample" = orig.ident
-#   (donor + tissue), this project's standard per-sample key. Unlike the
-#   heatmap, this table is NOT restricted to keep_types (the >= 10
-#   counts/1/3-of-samples filter above) -- the whole point of a
-#   diagnostic table is to also be able to check the cell types/samples
-#   the heatmap filters out, e.g. to confirm a low heatmap value isn't
-#   actually an artifact of very few cells or very low detection.
+# group, one panel per tissue, with cell types included only where raw
+# C9orf72 counts reach a minimum threshold in enough samples -- modeled
+# on a published PBMC C9orf72 expression heatmap, adapted to this
+# project's 3 tissues. Also writes a raw per-(sample, cell type, tissue)
+# C9orf72 count diagnostic table, independent of the heatmap's cell type
+# filter. Interactive script, not a SLURM job.
 
 suppressMessages({
   library(Seurat)

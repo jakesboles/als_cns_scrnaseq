@@ -1,34 +1,10 @@
-# Applies the first-pass cluster annotations from 12_annotation1.R to one
-# tissue, then subsets to one annotated cell type and re-clusters it from
-# scratch (fresh PCA/Harmony/neighbors/UMAP/Leiden), scoring each tested
-# resolution by graph modularity. Runs as a SLURM job array (see
-# jobs/13_subclustering1.sh), one task per (tissue, cell type) combination
-# listed in jobs/13_params.txt, so all combinations run in parallel
-# instead of 3 tissues x their cell types in nested for loops.
-#
-# Design notes (confirmed with the user before writing this):
-# - "as in 11*.R (lines 160-179)" and "graph modularity as in 11*.R" in
-#   the original request both matched content that only exists in
-#   10_clustering.R (the FindNeighbors()/RunUMAP() block and the
-#   graph_modularity() helper) -- 11_findmarkers.R has neither. Both are
-#   copied from 10_clustering.R here.
-# - Re-clustering a cell type needs its own FindVariableFeatures()/
-#   ScaleData(), not the full tissue's (those are dominated by genes that
-#   distinguish cell types from each other, not within-cell-type
-#   variation). FindVariableFeatures()'s default "vst" selection method
-#   needs real counts to fit correctly, but the object loaded from
-#   09_integration/10_clustering has normalized data in its "counts"
-#   layer (same pattern as 09/11/12) -- so real raw counts are pulled
-#   from data/06_obj_reassembly/bpcells for this cell type's cells
-#   specifically, and NormalizeData()/FindVariableFeatures()/ScaleData()/
-#   RunPCA() are all re-run fresh on those, mirroring 07_norm_pca.R's
-#   original recipe rather than mixing data sources.
-# - RunPCA() uses npcs = 50 (not the full object's 100) since a single
-#   cell type is a smaller, more homogeneous population; dims = 1:20 is
-#   still used for Harmony/neighbors/UMAP, matching the full object.
-# - Only metadata columns containing "pANN" are dropped, per the literal
-#   request -- other DoubletFinder columns (e.g. DF.classifications) are
-#   left in place.
+# Applies the round-1 (cell_type1) cluster annotations from
+# 12_annotation1.R to one tissue, then subsets to one annotated cell type
+# and re-clusters it from scratch (fresh PCA/Harmony/neighbors/UMAP/
+# Leiden) across a range of resolutions, scoring each by graph modularity,
+# toward a finer round-2 (cell_type2) annotation. Runs as a SLURM job
+# array (see jobs/13_subclustering1.sh), one task per (tissue, cell type)
+# combination listed in jobs/13_params.txt.
 
 suppressMessages({
   library(Seurat)

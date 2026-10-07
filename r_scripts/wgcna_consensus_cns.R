@@ -1,86 +1,10 @@
 # Runs consensus hdWGCNA (co-expression modules found consistently
 # between brain and spinal cord, not fit on one pooled population) for
 # three cell types shared across both tissues: microglia,
-# oligodendrocyte, astrocyte. Runs as a 3-task SLURM job array (see
-# jobs/wgcna_consensus.sh), one task per subclustering_targets entry
-# below -- a small, explicitly-named list (not a generated params file
-# like wgcna_single.R's "every cell type" case), matching this project's
-# convention for a handful of targets the user named inline.
-#
-# Reworked from the user's pushed draft (a copy-paste from the earlier
-# als_multitissue_scfrp/sea_ad_hypothalamus projects), carrying forward
-# every fix established in wgcna_single.R plus the draft's own
-# consensus-specific hdWGCNA API (SetMultiExpr() instead of SetDatExpr(),
-# TestSoftPowersConsensus() instead of TestSoftPowers(),
-# ConstructNetwork(consensus = T)). Design notes (confirmed with the user
-# before writing this):
-# - Source object: the draft loaded an old project's whole-cohort
-#   "full_integrated.rds" plus a separate metadata CSV that needed manual
-#   barcode-matching gymnastics (the sketch-assay underscore-prefix
-#   workaround, itself a relic of the sketch-based workflow this project
-#   abandoned -- see CLAUDE.md). None of that applies here. This script
-#   instead sources data/18_full_integration/brain_sc/ -- 17's per-tissue
-#   objects already combined and Harmony-integrated across brain + sc by
-#   18_full_integration.R -- rather than 17_obj_reassembly.R's separate
-#   per-tissue objects directly (which have no cross-tissue integration
-#   at all, unlike what 18 already built).
-# - As with wgcna_single.R, real raw counts are pulled from
-#   data/06_obj_reassembly/bpcells (18's own saved bpcells_data holds
-#   normalized data, not counts), and 18's own already-fit
-#   data/18_full_integration/brain_sc/harmony.rds is reattached (row-
-#   subset to this cell type's cells) rather than refit -- metacells are
-#   built by KNN within that existing cross-tissue embedding, so no fresh
-#   integration is needed here either.
-# - Filters to the target cell type before ever touching raw counts, same
-#   as wgcna_single.R and for the same reason (avoids ever loading/
-#   processing the other cell types' data for a task that only needs
-#   one).
-# - min_cells is checked per tissue, not just on the combined total --
-#   consensus WGCNA builds a separate metacell population and network per
-#   tissue before finding the consensus (via SetMultiExpr()'s
-#   multi_groups), so a cell type could clear a combined threshold while
-#   still being dangerously sparse in one tissue specifically. Same
-#   "abundance filter" lesson as deseq2.R/wgcna_single.R, applied at the
-#   right granularity for this script's structure.
-# - MetacellsByGroups() groups by c("orig.ident", "tissue") (cell_type3 is
-#   constant post-filtering, same simplification as wgcna_single.R) --
-#   tissue is included here (unlike the single script) because metacells
-#   must not mix cells across tissue for SetMultiExpr()'s per-tissue
-#   split to be meaningful.
-# - SetMultiExpr()'s draft argument was `slot = "data"` (Seurat v4
-#   naming); confirmed (not guessed) that hdWGCNA's current version
-#   supports `layer =` for Seurat v5 the same way SetDatExpr() does --
-#   updated to match.
-# - obj[["RNA"]]$data is coerced to a real dgCMatrix right before
-#   ModuleConnectivity(), not earlier -- same reasoning and same fix as
-#   wgcna_single.R (BPCells' lazy matrix classes don't support the
-#   CsparseMatrix coercion ModuleConnectivity()'s corSparse() step needs,
-#   and nothing before that call actually requires a real matrix).
-# - ConstructNetwork() gets the same per-task working-directory isolation
-#   as wgcna_single.R to avoid the TOM.rda SLURM-array collision
-#   (unfixed hdWGCNA bug, smorabit/hdWGCNA#182) -- consensus = T doesn't
-#   change which underlying function writes the stray temp file.
-# - ModuleEigengenes() uses group.by.vars = "orig.ident", matching
-#   wgcna_single.R (the draft's own consensus version called
-#   ModuleEigengenes() with no group.by.vars at all).
-# - The draft used hdWGCNA's built-in ModuleExprScore() for module
-#   scoring; per the user, this instead ports wgcna_single.R's manual
-#   AddModuleScore_UCell() + SmoothKNN(reduction = "harmony") approach,
-#   unchanged in logic (obj is already single-cell-type here too, so no
-#   extra subset() call is needed, same as the single script). The
-#   module_scores_ucell.csv here additionally keeps `tissue`, since unlike
-#   the single script's object this one always spans two tissues.
-# - Dropped the draft's ModuleFeaturePlot() UMAP visualizations (module
-#   eigengenes UMAP, module scores UMAP) and the "scores" correlogram --
-#   per the user, this should save the same kind of output as
-#   wgcna_single.R, not more.
-# - Saves the decomposed hdWGCNA outputs (module table, harmonized module
-#   eigengenes, smoothed UCell module scores, per-tissue soft-power
-#   table/plots, dendrogram, KME plot, ME correlogram) as plain CSVs/PNGs
-#   under results/wgcna_consensus/<cell_type>/, and only the hdWGCNA
-#   @misc[[wgcna_name]] experiment object (not the whole Seurat object)
-#   to data/wgcna_consensus/<cell_type>/wgcna_experiment.rds -- same
-#   rationale as wgcna_single.R.
+# oligodendrocyte, astrocyte. Saves module tables, harmonized module
+# eigengenes, smoothed UCell module scores, and per-tissue soft-power/
+# network diagnostics. Runs as a 3-task SLURM job array (see
+# jobs/wgcna_consensus.sh), one task per subclustering_targets entry.
 
 suppressMessages({
   library(hdWGCNA)

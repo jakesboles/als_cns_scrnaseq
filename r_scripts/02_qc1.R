@@ -1,3 +1,9 @@
+# Joins external sample-level metadata (tissue, batch, group, and a
+# derived per-subject `id`) onto the whole-cohort object from
+# 01_obj_creation.R and computes standard per-cell QC metrics, as the
+# shared basis for 03_qc2.R's filtering. Runs via jobs/02_qc1.sh (single
+# task).
+
 # Load libraries
 suppressMessages({
   library("plyr")

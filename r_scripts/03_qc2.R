@@ -1,3 +1,8 @@
+# Applies per-sample QC thresholds to filter low-quality cells from
+# 02_qc1.R's metrics, establishing the tissue file/title lookup
+# convention reused throughout the rest of this pipeline. Interactive
+# script, not part of the SLURM job chain.
+
 # Load libraries
 suppressMessages({
   library(tidyverse)

@@ -1,56 +1,10 @@
-# Two things happen here, both per task:
-#
-# 1. Rebuilds the full tissue object, applies the round-1 annotation
-#    (cell_type1, from results/12_annotation1/), and folds in each cell
-#    type's round-2 annotation (cell_type2, from 14_findmarkers2.R's
-#    per-cell-type annotations.csv) -- unchanged from the original
-#    15_annotation2.R, saved to results/15_annotation2/<tissue>_*_labels.png.
-# 2. Subsets that object to one of the cell_type2 groups below and
-#    re-processes it from scratch, very similarly to 13_subclustering1.R:
-#    fresh PCA/Harmony/neighbors/UMAP/clustering, picks the resolution
-#    with the highest graph modularity, runs FindAllMarkers(), and saves
-#    markers/a top-5 dot plot/a cluster DimPlot plus the re-processed
-#    object (metadata, normalized expression, Harmony embedding, UMAP)
-#    to data|results/15_subclustering2/<tissue>/<group>/. Also
-#    saves a DimPlot of the input cell_type2 labels on the new embedding,
-#    before clustering -- most useful for the multi-cell-type groups, to
-#    see whether the cell types that went in land in separate regions or
-#    intermix, without having to go dig through earlier scripts' plots.
-#
-# Runs as a SLURM job array (see jobs/15_subclustering2.sh), one task per
-# entry in subclustering_targets below -- some tissues get more than one
-# task (e.g. brain has 5), so this is no longer a simple 3-task-per-tissue
-# array. Each task independently rebuilds the whole tissue object before
-# subsetting, same redundancy 13_subclustering1.R already accepted for
-# full task parallelism -- for tissues with multiple targets, the
-# round1/round2 label plots get regenerated (identically) by every task
-# for that tissue, which is wasted but harmless compute.
-#
-# Design notes, since the request described this "very similarly to 13"
-# without restating every parameter:
-# - RunPCA() uses npcs = 50, matching 13_subclustering1.R (only the
-#   Harmony dims = 1:20 was explicitly restated in the request).
-# - Variable features/scaling are re-run from real raw counts
-#   (data/06_obj_reassembly/bpcells, subset to each group's cells), same
-#   as 13 and for the same reason -- a specific cell-type group's
-#   within-population variation isn't what the broader object's variable
-#   features were selected for, and FindVariableFeatures()'s default VST
-#   fit needs real counts, not the normalized data this pipeline's
-#   "counts" layer has held since 09_integration.
-# - "the same resolutions from before" is read as 13_subclustering1.R's
-#   list (this stage is explicitly modeled on 13), not 10_clustering.R's.
-# - A graph_modularity.csv + resolution-vs-modularity plot are saved too,
-#   matching 13's convention, even though not restated in this request --
-#   free byproduct of the same clustering loop, useful for the same
-#   review purpose.
-# - Only ONE final DimPlot is saved (the selected/best resolution's
-#   clusters), not one per resolution like 13 -- "save the new clusters
-#   in a DimPlot like before" reads as matching 14_findmarkers2.R's
-#   single cluster_dimplot.png, not 13's per-resolution DimPlot loop.
-# - Multi-cell-type groups (e.g. c("Endothelial cell", "Pericyte",
-#   "Smooth muscle cell")) are named for directories/files by joining the
-#   cell types with "_" -- no semantic group name (e.g. "Vascular") was
-#   given for these, so nothing was invented on the user's behalf.
+# Folds the round-1 (cell_type1) and round-2 (cell_type2) annotations
+# onto the full tissue object, then subsets to one cell_type2 group and
+# re-processes it from scratch (fresh PCA/Harmony/neighbors/UMAP/
+# clustering across a range of resolutions, picked by graph modularity,
+# then FindAllMarkers()), toward a round-3 (cell_type3) annotation. Runs
+# as a SLURM job array (see jobs/15_subclustering2.sh), one task per
+# entry in subclustering_targets below.
 
 suppressMessages({
   library(Seurat)

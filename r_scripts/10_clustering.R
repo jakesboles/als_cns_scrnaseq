@@ -1,23 +1,9 @@
 # Computes a neighbor graph/UMAP and Leiden-clusters one tissue's
-# harmony-integrated data across a range of resolutions, scoring each with
-# approximate silhouette width, neighborhood purity, and graph modularity,
-# for the user to pick a resolution to carry forward. Runs as a SLURM job
-# array (see jobs/10_clustering.sh), one task per tissue, since all 3
-# tissues are fully independent (same restructuring as 04_doubletfinder.R,
-# 07_norm_pca.R, and 08_sketch_pca.R). 11_clustering.R (FindAllMarkers())
-# only needs cluster labels plus the expression data already saved by
-# 09_*_integration.R, which this script doesn't touch -- so metadata.rds
-# (with one "resX_clusters" column per tested resolution) is the only
-# required output. The harmony UMAP is also saved for convenience/
-# plotting, but isn't needed by 11.
-#
-# Cluster-quality scoring uses centroid-approximated silhouette width and
-# a kNN-graph-based neighborhood purity/modularity, rather than
-# cluster::silhouette() on a full cell x cell distance matrix -- that
-# O(cells^2) matrix OOM-killed this job on the larger tissues. Both
-# approximations only need cell-to-centroid or cell-to-neighbor
-# comparisons (O(cells x clusters) or reusing the already-computed
-# neighbor graph), never a full pairwise distance matrix.
+# Harmony-integrated data across a range of resolutions, scoring each
+# with approximate silhouette width, neighborhood purity, and graph
+# modularity, so a resolution can be picked to carry forward into marker
+# finding and annotation. Runs as a SLURM job array (see
+# jobs/10_clustering.sh), one task per tissue.
 
 # Load libraries
 suppressMessages({

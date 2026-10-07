@@ -1,3 +1,8 @@
+# Cohort demographics figures for the manuscript: a multi-track heatmap
+# (C9orf72 status, onset site, age, clinical diagnosis, etc. by subject)
+# plus individual age/disease-duration/sex/onset-site plots. Interactive
+# script, not part of the processing chain.
+
 library(tidyverse)
 library(paletteer)
 library(ggplot2)

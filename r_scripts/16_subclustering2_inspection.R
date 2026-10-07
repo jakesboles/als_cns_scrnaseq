@@ -1,3 +1,8 @@
+# Interactive inspection session for one 15_subclustering2.R subclustering
+# target: loads its re-clustered object at the best (graph-modularity)
+# resolution plus its markers, for manual round-3 (cell_type3)
+# annotation. Not automated, not part of the SLURM job chain.
+
 suppressMessages({
   library(Seurat)
   library(tidyverse)

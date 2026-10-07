@@ -1,3 +1,7 @@
+# Bar chart of DEG counts (sALS-only/C9orf72-only/shared, from deseq2.R's
+# output) across every cell type in every tissue, for the manuscript.
+# Interactive script, not a SLURM job.
+
 library(tidyverse)
 library(ggrepel)
 library(scCustomize)

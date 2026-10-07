@@ -1,65 +1,11 @@
 # Runs consensus hdWGCNA between three muscle fiber types (co-expression
 # modules found consistently across denervated, Type I, and Type II
 # fibers, not fit on one pooled population), sourced from muscle's single
-# 17_obj_reassembly.R object. Single-task script, not a SLURM array (see
-# jobs/wgcna_consensus_muscle.sh) -- there's exactly one comparison here,
-# matching this project's precedent for genuinely single-task work
-# (06_obj_reassembly.R has no --array either).
-#
-# Structurally a mirror image of wgcna_consensus.R (brain vs. spinal cord
-# consensus for one fixed cell type each), not an extra task bolted onto
-# it: there, cell_type3 was the fixed "which population" identity and
-# tissue was the multi-way split; here tissue is fixed (muscle only) and
-# cell_type3 is the multi-way split instead. Every cross-cutting
-# structural piece (group.by/group_name vs. multi.group.by/multi_groups,
-# what's constant vs. what varies for MetacellsByGroups()/the min_cells
-# check) has to flip accordingly, which is exactly the kind of thing that
-# turns into unreadable branching if crammed into one script -- kept
-# separate instead, per the user (a separate script was explicitly fine
-# with them if that was cleaner).
-#
-# Every fix established in wgcna_single.R/wgcna_consensus.R (including
-# the two the user found necessary after merging wgcna_consensus.R --
-# cell_type3 belongs in MetacellsByGroups()'s group.by even when it looks
-# redundant, and FindVariableFeatures() is required right after
-# NormalizeData()) is carried forward unchanged:
-# - Filters to the three target fiber types before touching raw counts;
-#   real raw counts come from data/06_obj_reassembly/bpcells (17's own
-#   saved bpcells_data holds normalized data, not counts); muscle's
-#   already-fit data/17_obj_reassembly/muscle/harmony.rds is reattached
-#   (row-subset to these cells) rather than refit.
-# - min_cells is checked per fiber type (not combined), using explicit
-#   factor levels so a fiber type with zero matching cells still shows up
-#   as a 0 count and fails the check, rather than silently vanishing from
-#   the table -- same "abundance filter, checked at the actual comparison
-#   granularity" lesson as wgcna_consensus.R's per-tissue check.
-# - MetacellsByGroups() groups by c("orig.ident", "cell_type3") -- no
-#   "tissue" dimension needed here (constant across this whole script),
-#   and cell_type3 is now the dimension that must not get mixed across
-#   metacells, matching what tissue was for wgcna_consensus.R.
-# - SetMultiExpr()/ModuleConnectivity() use group.by = "tissue",
-#   group_name = "Skeletal muscle" (the constant identity, mirroring what
-#   cell_type3/the target cell type was in wgcna_consensus.R) with
-#   multi.group.by = "cell_type3", multi_groups = fiber_types for the
-#   actual three-way comparison. layer = "data" (Seurat v5 naming,
-#   already confirmed against hdWGCNA's docs in wgcna_consensus.R).
-# - obj[["RNA"]]$data is coerced to a real dgCMatrix right before
-#   ModuleConnectivity(), not earlier -- same BPCells/CsparseMatrix
-#   reasoning as wgcna_single.R/wgcna_consensus.R.
-# - ConstructNetwork() gets the same per-task working-directory isolation
-#   to avoid the TOM.rda collision (unfixed hdWGCNA bug,
-#   smorabit/hdWGCNA#182); results_dir/data_dir are absolute paths for
-#   the same reason.
-# - Module scoring uses the same manual AddModuleScore_UCell() +
-#   SmoothKNN(reduction = "harmony") approach as the other two scripts.
-#   The scores CSV keeps cell_type3 (the fiber type) instead of tissue,
-#   since that's the dimension that actually varies here.
-# - Saves the same kind of decomposed output (module table, harmonized
-#   module eigengenes, smoothed UCell module scores, per-fiber-type
-#   soft-power table/plot, dendrogram, KME plot, ME correlogram) under
-#   results/wgcna_consensus_muscle/, and only the hdWGCNA
-#   @misc[[wgcna_name]] experiment object to
-#   data/wgcna_consensus_muscle/wgcna_experiment.rds.
+# 17_obj_reassembly.R object. Structurally a mirror image of
+# wgcna_consensus_cns.R (fiber type is the multi-way split here, instead
+# of tissue), kept as a separate script since that cross-cutting role
+# swap turns into unreadable branching if crammed into one. Single-task
+# script, not a SLURM array (see jobs/wgcna_consensus_muscle.sh).
 
 suppressMessages({
   library(hdWGCNA)

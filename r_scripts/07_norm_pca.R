@@ -1,11 +1,8 @@
 # Normalizes counts, finds variable features, scales, runs PCA, and runs
-# JackStraw for one tissue, on the full (non-sketched) data. Runs as a
-# SLURM job array (see jobs/07_norm_pca.sh), one task per tissue, since all
-# 3 tissues are fully independent and there's no reason to process them one
-# at a time in a single job (same restructuring as 04_doubletfinder.R and
-# 08_sketch_pca.R). Saves the normalized data, PCA, variable features, and
-# JackStraw scores as BPCells/RDS output for the next steps: appraising the
-# PCA to pick integration parameters, then integration itself.
+# JackStraw for one tissue on the full (non-sketched) data, saving that
+# output for appraising the PCA and the per-tissue integration step that
+# follows. Runs as a SLURM job array (see jobs/07_norm_pca.sh), one task
+# per tissue.
 
 # Load libraries
 suppressMessages({
