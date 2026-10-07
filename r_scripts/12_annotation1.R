@@ -1,14 +1,9 @@
 # Makes diagnostic plots for manually annotating one tissue's clusters
-# offline: a UMAP colored by cluster, a dot plot of each cluster's top 5
-# marker genes (from 11_findmarkers.R), and a feature/violin plot pair for
-# each of a tissue-specific set of canonical marker genes. The user
-# annotates clusters by hand from these plots plus the marker CSV from 11,
-# saving results into the annotation template 11 already writes;
-# 13 (to be written) will load that annotation and label the clusters.
-# Runs as a SLURM job array (see jobs/12_annotation1.sh), one task per
-# tissue, since all 3 tissues are fully independent (same restructuring as
-# 04_doubletfinder.R, 07_norm_pca.R, 08_sketch_pca.R, 10_clustering.R, and
-# 11_findmarkers.R).
+# offline: a UMAP colored by cluster, a dot plot of each cluster's top
+# marker genes (from 11_findmarkers.R), and a feature/violin plot pair
+# for each of a tissue-specific set of canonical marker genes, toward a
+# round-1 (cell_type1) annotation. Runs as a SLURM job array (see
+# jobs/12_annotation1.sh), one task per tissue.
 
 suppressMessages({
   library(Seurat)

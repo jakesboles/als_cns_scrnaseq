@@ -1,12 +1,9 @@
-# This script is to assemble the object from CellBender-corrected count matrices for
-# all 90 samples from the multi-system ALS project.
-# The next scripts will assemble QC metrics and discard low-quality cells,
-# but I expect the object will be so large that it will not be feasible to
-# tinker with QC thresholds and other analysis parameters at the same time
-# as creating the main object.
-# With >1.3M cells prior to QC, the counts matrix is saved on-disk with BPCells
-# instead of as a single in-memory RDS, so downstream scripts can load it without
-# reading the full matrix into memory.
+# Assembles the whole-cohort Seurat object from CellBender-corrected count
+# matrices for all 90 samples. With >1.3M cells prior to QC, the counts
+# matrix is saved on-disk with BPCells instead of as a single in-memory
+# RDS, so downstream QC/filtering scripts can load it without reading the
+# full matrix into memory. Runs via jobs/01_obj_creation.sh (single task,
+# loops over all samples internally).
 
 # Load libraries
 suppressMessages({

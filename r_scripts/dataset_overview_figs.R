@@ -1,3 +1,7 @@
+# Dataset overview QC figures (UMI/gene counts per subject, faceted by
+# tissue and disease group) from 02_qc1.R's metadata. Interactive script,
+# not a SLURM job.
+
 library(Seurat)
 library(scCustomize)
 library(tidyverse)

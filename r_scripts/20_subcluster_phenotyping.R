@@ -1,59 +1,11 @@
-# Clusters the microglia object (data/19_subclustering3/microglia) at a
-# fixed resolution and cross-references the resulting clusters against
-# milo.R's differential neighborhood abundance results, so DA-neighborhood
-# content can inform manual subcluster labeling before those labels get
-# folded back onto the full CNS tissue object -- itself headed for use as
-# the Cell2Location reference against Visium data in the same tissues.
-# Interactive script, not a SLURM job (no array setup) -- the clustering/
-# Milo sections below are meant to run once and be inspected; final label
-# assignment is done by hand afterward (not implemented here, per the
-# user).
-#
-# Design notes:
-# - Resolution is fixed at 0.8, per the user -- an earlier version of this
-#   script swept 13_subclustering1.R/15_subclustering2.R's 13-value
-#   resolution list and picked the best by graph modularity, but the user
-#   reviewed that output and settled on 0.8 directly, so the sweep is
-#   gone.
-# - Milo cross-reference (design choice, flagged rather than guessed
-#   silently -- no prior script in this project cross-references Milo
-#   results against a separate clustering, so there's no established
-#   pattern to follow): for each cluster and each (tissue, contrast)
-#   comparison, computes the fraction of the cluster's cells belonging to
-#   at least one significant (SpatialFDR < 0.05) neighborhood, split by
-#   direction (enriched, logFC > 0, vs. depleted, logFC < 0). A cluster
-#   with a high fraction in either direction is one "more likely to
-#   contain Nhoods that are changing in ALS" for that comparison. This is
-#   cell-membership-based (via nhoods(milo)'s incidence matrix), not
-#   restricted to cells actually in that comparison's tissue -- a
-#   neighborhood spans both tissues by construction (see milo.R's header),
-#   and its significance in one tissue's test is itself the whole point of
-#   sharing neighborhoods across tissues (spotting shared vs.
-#   tissue-specific change), so any member cell counts.
-# - Second Milo view: a jittered dot plot with one dot per neighborhood
-#   (not per cell, unlike the bar chart above), x = the cluster of that
-#   neighborhood's own index cell, y = logFC, colored by significance.
-#   "The cluster a neighborhood belongs to" is necessarily an
-#   approximation -- a neighborhood is ~15 cells around an index cell and
-#   can span a cluster boundary -- so this uses the same index-cell
-#   convention milo_viz.R/milo_wgcna.R already established for
-#   representing one neighborhood by one cell, rather than inventing a
-#   new one.
-# - Note for later: SpatialFDR NA is coerced to 1 (-> not significant)
-#   before splitting into sig_up/sig_down for the bar chart, matching
-#   milo_viz.R's convention -- milo_wgcna.R instead preserves NA
-#   (untested/degenerate neighborhoods, e.g. ones barely present in a
-#   given tissue -- see its own header) as NA rather than collapsing to
-#   FALSE. Left as-is here since the bar chart code was to be kept
-#   unchanged, but worth knowing the new dot plot will show those
-#   degenerate neighborhoods as ordinary non-significant logFC == 0 points
-#   rather than flagging them as untested.
-# - milo.R's Milo object is built from this exact same
-#   data/19_subclustering3/microglia source (same script, no extra
-#   filtering in either place), so cell barcodes are expected to match
-#   directly -- unlike milo_wgcna.R, which had to bridge two different
-#   pipelines' microglia populations. Checked at runtime via a coverage
-#   message anyway, with a hard stop() only if coverage is implausibly low.
+# Clusters the microglia object at a fixed resolution and cross-references
+# the resulting clusters against milo.R's differential neighborhood
+# abundance results (a per-cluster significant-neighborhood bar chart and
+# a per-neighborhood logFC dot plot), so that content can inform manual
+# subcluster labeling before those labels get folded back onto the full
+# CNS tissue object -- itself headed for use as the Cell2Location
+# reference against Visium data in the same tissues. Interactive script,
+# not a SLURM job; label assignment itself is done by hand afterward.
 
 suppressMessages({
   library(Seurat)

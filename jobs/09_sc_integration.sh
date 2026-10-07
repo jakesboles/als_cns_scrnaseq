@@ -9,12 +9,6 @@
 #SBATCH --output /projects/b1169/boles/als_cns_scrnaseq/logs/%x_%j.log
 #SBATCH --verbose
 
-# --mem/--time are unmeasured -- back on Harmony for good now (CCA and
-# Harmony gave similar integration quality on this data, and Harmony is
-# meaningfully faster since it only needs the PCA embedding, not dense
-# per-sample expression access like CCA did). Check `seff <jobid>` after
-# this runs and adjust.
-
 module load R/4.4.0
 module load hdf5/1.14.1-2-gcc-12.3.0
 

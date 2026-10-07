@@ -1,3 +1,7 @@
+# Interactive visualization of one 19_subclustering3.R target:
+# cell-type/tissue UMAPs and a top-marker dot plot from its
+# FindAllMarkers() output. Not a SLURM job.
+
 suppressMessages({
   library(Seurat)
   library(tidyverse)

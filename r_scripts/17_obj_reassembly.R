@@ -1,47 +1,10 @@
-# Produces the final cleaned, integrated, fully annotated object for one
-# tissue. Runs as a SLURM job array (see jobs/17_obj_reassembly.sh), one
-# task per tissue, since all 3 tissues are fully independent (same
-# restructuring as 04/07/08/09/10/11/12/13/14/15).
-#
-# Per task:
-# 1. Rebuilds the full tissue object and folds in cell_type1 (round 1,
-#    results/12_annotation1/) and cell_type2 (round 2,
-#    14_findmarkers2.R's per-cell-type annotations.csv) -- identical to
-#    15_subclustering2.R's own folding logic (the "older 15_annotation2.R"
-#    approach the user pointed back to), reused here rather than
-#    reimplemented differently.
-# 2. Folds in cell_type3 (round 3, 15_subclustering2.R's per-group
-#    annotations.csv): for each subclustering_targets group belonging to
-#    this tissue, matches each cell's cluster (at that group's
-#    modularity-best resolution) to its annotations.csv row. A cell type
-#    never selected as a subclustering target keeps its cell_type2 label
-#    untouched (cell_type3 defaults to cell_type2 up front). Within a
-#    processed group, any cluster left with a blank cell_type entry (the
-#    user's way of saying "the existing label already looked right")
-#    falls back to that cell's own cell_type2 value instead of being
-#    overwritten with an empty string.
-# 3. Removes cells where cell_type3 == "Remove".
-# 4. Drops metadata clutter that's no longer meaningful now that
-#    cell_type1/2/3 exist: all resX_clusters columns from 10_clustering.R's
-#    resolution sweep, and DoubletFinder's pANN* columns. DF.unadj/DF.adj
-#    are kept -- still meaningful QC info, confirmed with the user.
-# 5. Rebuilds from real raw counts (data/06_obj_reassembly/bpcells,
-#    subset to the retained cells) and re-runs NormalizeData/
-#    FindVariableFeatures/ScaleData/RunPCA(npcs=100, matching
-#    07_norm_pca.R's original full-tissue scale, not 13/15's npcs=50
-#    cell-type-subset scale) for the same reason 13/15 did: this
-#    pipeline's "counts" layer has held normalized data, not real counts,
-#    since 09_integration, and FindVariableFeatures()'s default VST fit
-#    needs real counts.
-# 6. Re-integrates with Harmony (dims=1:20, matching every other
-#    integration step) and computes one diagnostic UMAP -- matching
-#    09_*_integration.R's scope, not 10_clustering.R's. No reclustering
-#    here (confirmed with the user): cell_type3 is already the final
-#    annotation, so there's no reason to run a fresh Leiden resolution
-#    sweep on top of it.
-# 7. Saves metadata, the normalized BPCells matrix, the Harmony embedding,
-#    and the UMAP -- the final per-tissue object -- plus one DimPlot of
-#    cell_type3 for a sanity check.
+# Produces the final cleaned, fully annotated object for one tissue:
+# folds in cell_type1/cell_type2/cell_type3 (rounds 1-3 of manual
+# annotation), drops cells annotated cell_type3 == "Remove", rebuilds
+# from real raw counts, and re-integrates with Harmony. This is the
+# terminal per-tissue object every later analysis script builds on. Runs
+# as a SLURM job array (see jobs/17_obj_reassembly.sh), one task per
+# tissue.
 
 suppressMessages({
   library(Seurat)

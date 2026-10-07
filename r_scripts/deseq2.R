@@ -1,101 +1,10 @@
 # Pseudobulk DESeq2 differential expression within each cell type
-# (cell_type3) of one tissue, comparing sALS vs Control and C9orf72 vs
-# Control. Runs as a SLURM job array (see jobs/deseq2.sh), one task per
-# tissue, loading each tissue's final annotated object from
+# (cell_type3) of one tissue, comparing sALS vs. Control and C9orf72 vs.
+# Control, with per-cell-type-per-sample abundance filtering to avoid
+# DESeq2 failures on sparsely represented cell types, and age/sex as
+# covariates in the model. Runs as a SLURM job array (see jobs/deseq2.sh),
+# one task per tissue, loading each tissue's final annotated object from
 # 17_obj_reassembly.R.
-#
-# Design notes (fixed while reviewing the user's draft):
-# - 17_obj_reassembly.R's saved bpcells_data holds normalized data, not
-#   real counts (same pipeline-wide gotcha as 09_integration onward --
-#   see 13/17's header notes). AggregateExpression() needs real raw
-#   counts to sum correctly, so this script pulls raw counts from
-#   data/06_obj_reassembly/bpcells directly, subset to the cell barcodes
-#   retained in 17's metadata.rds, same pattern 13/17 use.
-# - AggregateExpression()'s counts-layer argument is `layer =` under
-#   Seurat v5, not `slot =` (the draft used the pre-v5 name).
-# - results()'s independent-filtering toggle is `independentFiltering =`
-#   (the draft had `independentFilter`, missing "ing" -- would have
-#   errored as an unused argument). Combining independentFiltering = T
-#   with filterFun = ihw is the documented IHW usage.
-# - The draft's `meta$Genotype <- factor(..., levels = c("WT","HET","HMM"))`
-#   block looks like leftover copy-paste from an unrelated mouse study --
-#   "Genotype" was never selected into meta, and WT/HET/HMM aren't levels
-#   that exist in this human ALS cohort (whose grouping variable is
-#   `group`: Control/sALS/C9orf72). Dropped.
-# - The draft's second results() contrast used c("group", "C9orf72",
-#   "ALS") -- "ALS" isn't a valid factor level. Fixed to c("group",
-#   "C9orf72", "Control"), matching the user's stated "C9-ALS vs
-#   control" comparison and the already-correctly-named paired
-#   lfcShrink(coef = "group_C9orf72_vs_Control") call.
-# - The draft selected `sex` and `age` into meta as covariates, but
-#   neither column exists anywhere in this project's single-cell
-#   metadata pipeline (confirmed against 00_cellbender_plotting.R's
-#   explicit column list). Per the user, both are needed for this
-#   analysis, so they're now joined in from the separate
-#   tab_data/target_als_demographics_compiled.csv (donor-level, keyed by
-#   `case_number`, used previously only by demographics_figure.R) onto
-#   `id` (the donor-only label added in 02_qc1.R, orig.ident minus the
-#   tissue suffix). `case_number` and `id` disagree on hyphen placement
-#   for at least the Barrow ("GWF") site -- 02_qc1.R has a commented-out
-#   block recoding "GWF-19-47" -> "GWF19-47" for exactly this reason --
-#   so the join key strips all hyphens from both sides rather than
-#   hardcoding the known mismatches. NOTE: the demographics CSV isn't
-#   readable from this dev container (it's an ungitted reference input,
-#   only present on the HPC filesystem), so the exact column name for
-#   sex after janitor::clean_names() is unverified -- `age_at_death` is
-#   confirmed correct (demographics_figure.R already uses it), but
-#   double-check the `sex` column name against the actual file and fix
-#   the dplyr::select() below if it differs. Both covariates are added to
-#   the DESeq2 design (design = ~ sex + age_at_death + group) since the
-#   user called them out as important for this analysis; the group
-#   contrasts/coefficient names below are unaffected by this since group
-#   stays a separate term with the same factor levels.
-# - Output directory restructured to results/deseq2/<tissue>/, matching
-#   every other script's convention; the draft had no tissue segment and
-#   several typo'd path variables (resuls_dir, bare "results").
-# - The draft also had no object-loading or SLURM array setup at all (the
-#   "load BPCells object" step was left as a comment, `tissue` was
-#   referenced in a message() but never defined, and `celltypes[i]` was
-#   used once instead of the actually-defined `cell_types[i]`) -- all
-#   added/fixed here, following the tissues-table + SLURM_ARRAY_TASK_ID
-#   fail-fast pattern used by every other per-tissue array script
-#   (09/17/18).
-# - The draft matched pseudobulk sample metadata to AggregateExpression()'s
-#   output via `match(colnames(exp), rownames(meta))`, but rownames(meta)
-#   are still per-cell barcodes at that point (meta was built from
-#   sub@meta.data, not yet collapsed to one row per sample), while
-#   colnames(exp) are sample names (orig.ident) -- that match() would
-#   never hit and every sample's covariates would come out NA. Fixed to
-#   match on the orig.ident column directly and set matching rownames,
-#   since DESeqDataSetFromMatrix() requires colData's rownames to equal
-#   countData's colnames exactly.
-# - This PR restarts from main after the user's own follow-up commit
-#   ("Revised and debugged DESeq2 script") landed there directly, so
-#   those fixes are carried forward as-is rather than reverted: `layer =
-#   "counts"` in AggregateExpression() is commented out, orig.ident gets
-#   its underscores swapped for hyphens before matching against
-#   AggregateExpression()'s output columns (it sanitizes "_" -> "-"
-#   internally, since it uses "_" as its own separator when group.by has
-#   multiple columns), age is entered as a centered/scaled `age_scale`
-#   rather than raw `age_at_death`, and the low-count gene filter is
-#   `>= 10 counts in >= 10 samples`.
-# - Adds per-cell-type per-sample abundance filtering (see the comment
-#   above the cell type loop) after the user hit DESeq2's "every gene
-#   contains at least one zero, cannot compute log geometric means"
-#   error on sparsely-represented cell types (motor cortex macrophages,
-#   spinal cord B-cells -- many samples with <10 contributing cells).
-#   Every cell type now also writes results/deseq2/<tissue>/<cell_type>/
-#   sample_filtering.csv (orig.ident, group, n_cells, retained) up front,
-#   before the skip check -- so a skipped or thinned cell type's sample
-#   composition can be reviewed later without rerunning anything. Note
-#   that age_scale is computed from the retained samples only (after
-#   filtering), not the full pre-filter sample set, so its scaling is
-#   specific to what actually goes into that cell type's model.
-# - The DESeqDataSetFromMatrix()-through-lfcShrink() block is wrapped in
-#   tryCatch() so a cell type that still fails in the pipeline itself
-#   (the abundance filter only catches the most common trigger of the
-#   size-factor error, not every case) is logged and skipped rather than
-#   killing the rest of the tissue's array task.
 
 suppressMessages({
   library(tidyverse)

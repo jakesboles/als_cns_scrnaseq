@@ -1,9 +1,9 @@
-# Evaluates the sketch PCA from 08_sketch_pca.R -- elbow/loading/DimPlots to
-# gauge batch/site/group structure, then a quick FindNeighbors()/RunUMAP()
-# pass -- to help pick the number of PCs and judge whether integration is
-# needed before committing to those choices for the full analysis. This
-# script only reads 08's output and writes plots; it doesn't save any new
-# matrices or objects.
+# Evaluates a tissue's PCA (elbow/loading/DimPlots, then a quick
+# FindNeighbors()/RunUMAP() pass) to gauge batch/site/group structure and
+# help pick the number of PCs and judge whether integration is needed,
+# before committing to those choices for the full analysis. Reads
+# existing PCA output and writes plots only; not part of the SLURM job
+# chain.
 
 # Load libraries
 suppressMessages({

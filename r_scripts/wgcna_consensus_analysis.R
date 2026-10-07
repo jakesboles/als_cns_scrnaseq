@@ -1,3 +1,7 @@
+# Linear mixed-model statistics (group x tissue) and gene set enrichment
+# on one cell type's consensus hdWGCNA module scores/modules
+# (wgcna_consensus_cns.R output). Interactive script, not a SLURM job.
+
 library(Seurat)
 library(scCustomize)
 library(tidyverse)

@@ -1,15 +1,7 @@
 # Finds cluster markers (FindAllMarkers()) for one tissue at its chosen
-# clustering resolution, and writes out a blank cluster-annotation
-# template alongside them. Runs as a SLURM job array (see
-# jobs/11_findmarkers.sh), one task per tissue, since all 3 tissues are
-# fully independent (same restructuring as 04_doubletfinder.R,
-# 07_norm_pca.R, 08_sketch_pca.R, and 10_clustering.R).
-#
-# Only needs the expression matrix (unchanged since 09_*_integration.R --
-# 10_clustering.R doesn't touch it) and cluster labels (from
-# 10_clustering.R's metadata.rds) -- nothing else is required for
-# FindAllMarkers(), which tests on the normalized "data" layer and doesn't
-# need counts or scale.data.
+# clustering resolution, and writes a blank cluster-annotation template
+# alongside them for round-1 manual annotation. Runs as a SLURM job array
+# (see jobs/11_findmarkers.sh), one task per tissue.
 
 # Load libraries
 suppressMessages({

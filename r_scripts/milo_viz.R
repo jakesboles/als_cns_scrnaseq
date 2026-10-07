@@ -1,36 +1,9 @@
-# Assembles the plotting inputs for milo.R's differential neighborhood
-# abundance results as UMAPs colored by log fold-change -- one entry per
-# (tissue, disease-group contrast) combination available for a given
-# 19_subclustering3.R target, so all of them can be plotted together
-# (e.g. with patchwork) and compared side by side. Interactive script,
-# not a SLURM job -- run by hand, changing target_name as needed.
-#
-# The neighborhoods/graph/embedding are the same shared, cross-tissue
-# ones milo.R built once per target -- only the logFC coloring changes
-# per entry, since that's what actually varies per tissue's testNhoods()
-# result. This lets the same neighborhood, in the same spot on the plot,
-# be visually compared across tissues/groups to see whether an abundance
-# change is shared or tissue-specific, matching milo.R's own design
-# rationale.
-#
-# This only assembles plotting inputs (plot_data below) -- it does not
-# build or save any ggplot object. Each plot_data[[...]] entry has
-# everything needed to build one panel (layout, min_logfc, max_logfc,
-# breaks, tissue, contrast) for however you want to lay it out.
-#
-# Design notes (carried over from the earlier array-job version of this
-# script, still relevant):
-# - milo.R's saved Milo object has no UMAP reduction attached (it only
-#   attaches "harmony" for neighborhood construction) --
-#   19_subclustering3.R's own saved harmony_umap.rds is loaded and
-#   attached here instead.
-# - Only combinations with an actual results CSV are included --
-#   milo.R's min_donors_per_group check can skip a tissue entirely, so a
-#   missing file is a real possibility, not a typo.
-# - `size` (per-neighborhood cell count) doesn't depend on tissue/
-#   contrast, so it's computed once, not per combination.
-# - min_logfc/max_logfc/breaks are computed per combination, since the
-#   logFC range differs per test.
+# Visualizes milo.R's differential neighborhood abundance results for a
+# given 19_subclustering3.R target: a shared-scale UMAP panel colored by
+# logFC for each (tissue, contrast) combination, and an upset plot of
+# which combinations' differentially abundant neighborhoods overlap.
+# Interactive script, not a SLURM job -- run by hand, changing
+# target_name as needed.
 
 suppressMessages({
   library(Seurat)

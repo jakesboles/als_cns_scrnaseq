@@ -1,3 +1,8 @@
+# Visualizes speckle.R's cell-type proportion results: fold-change
+# scatterplots comparing sALS and C9orf72 effects per tissue, and
+# per-cell-type dot plots with pairwise group comparison p-values.
+# Interactive script, not a SLURM job.
+
 library(tidyverse)
 library(ggplot2)
 library(ggrepel)

@@ -1,101 +1,11 @@
 # Integrates consensus hdWGCNA module scores (wgcna_consensus_cns.R) with
 # Milo differential neighborhood abundance results (milo.R) for microglia
-# into one long-format data frame: one row per (neighborhood, comparison)
-# pair, with the neighborhood's UMAP embedding (for plotting), that
-# comparison's logFC/significance, and each WGCNA module's mean score
-# across just that comparison's member cells within the neighborhood.
-# Assembly only, no plotting -- the user will build plots interactively
-# from this data frame.
-#
-# Design notes:
-# - Reworked from an earlier wide-format version of this script (one row
-#   per neighborhood, module scores averaged across *all* of a
-#   neighborhood's member cells regardless of tissue/group) after the user
-#   caught a real bug in that design: a neighborhood's cell membership
-#   doesn't change between comparisons (only abundance does), but pooling
-#   every group's cells together to score a neighborhood meant every
-#   comparison saw the exact same module score for a given neighborhood --
-#   the "blue" module histograms for brain_C9/brain_sALS/sc_C9/sc_sALS came
-#   out identically distributed, which is what surfaced the bug.
-# - The fix: each neighborhood is now scored separately per comparison,
-#   using only the member cells that actually belong to that comparison --
-#   i.e. cells in the relevant tissue AND in that comparison's disease
-#   group specifically (sALS or C9orf72, not both, and not Control either
-#   -- per the user, Control cells shouldn't be part of a comparison's
-#   module score at all, not even shared across comparisons). Those
-#   per-comparison cell subsets are now fully disjoint per tissue (a
-#   neighborhood's brain_C9 and brain_sALS subsets share no cells), so the
-#   resulting module scores can legitimately differ across comparisons --
-#   unlike logFC/size/embedding, which are single neighborhood-level values
-#   miloR itself computes once and that don't need this per-comparison
-#   treatment.
-# - Module score aggregation within a comparison's cell subset is still a
-#   mean across member cells (via nhoods(milo)'s cell x neighborhood
-#   incidence matrix), not just the index cell's score -- confirmed with
-#   the user previously, matches Milo's own convention for overlaying a
-#   continuous per-cell covariate onto neighborhoods (e.g.
-#   plotNhoodExpressionDA()).
-# - Module scores come from wgcna_consensus_cns.R's
-#   results/wgcna_consensus/Microglia/module_scores_ucell.csv (kNN-smoothed
-#   UCell scores, one row per cell), not module_eigengenes.csv (the
-#   harmonized module eigengenes) -- matching wgcna_consensus_viz.R's own
-#   established use of the UCell scores as "the" module scores in this
-#   project.
-# - wgcna_consensus_cns.R's Microglia population comes from
-#   data/18_full_integration/brain_sc (filtered to cell_type3 ==
-#   "Microglia"), while milo.R's microglia population comes from
-#   data/19_subclustering3/microglia -- two different pipelines, but both
-#   ultimately trace back to the same 17_obj_reassembly.R per-tissue
-#   cell_type3 annotations with no further cell exclusion in between, so
-#   the cell barcode sets are expected to match closely. Checked at
-#   runtime (not assumed) via a coverage message (both overall and per
-#   comparison), with a hard stop() only if overall coverage is implausibly
-#   low (<50%), since that would mean the assumption is actually wrong
-#   rather than a handful of incidental stragglers.
-# - `tissue`/`group` come straight from colData(milo) -- as.SingleCellExperiment()
-#   (called in milo.R when building the Milo object) carries the Seurat
-#   object's metadata columns over as colData, so these are the same
-#   `tissue`/`group` columns milo.R itself filters/models on, not reloaded
-#   from anywhere else.
-# - Neighborhood ID is the same integer Nhood ID testNhoods() itself uses
-#   (1:ncol(nhoods(milo))) -- the natural join key across nhoods(milo)'s
-#   incidence matrix, nhoodIndex(milo), and every results CSV's own "Nhood"
-#   column.
-# - logFC/significance are kept raw (not zeroed out for non-significant
-#   neighborhoods the way milo_viz.R zeroes logFC for plot coloring) --
-#   this is a data table for further interactive analysis, not a single
-#   fixed plot, so thresholding is left to the user. "Significant" =
-#   SpatialFDR < 0.05, this project's standard threshold elsewhere (DESeq2,
-#   GSEA).
-# - UMAP embedding is still the index cell's own coordinates (reattached
-#   from 19_subclustering3.R's harmony_umap.rds, same as milo_viz.R) and
-#   doesn't vary by comparison -- it's a plotting position for the
-#   neighborhood, not a value being aggregated, so it's joined back onto
-#   every comparison's row for that neighborhood unchanged.
-# - Every neighborhood is included, not just DA/significant ones -- the
-#   user can filter interactively.
-# - Many neighborhoods will legitimately have NA module scores and
-#   near-null DA results (logFC == 0, sig == NA) for a given comparison --
-#   since neighborhoods are shared across tissues but individual
-#   neighborhoods aren't evenly split between tissues, some are dominated
-#   by the *other* tissue's cells and barely exist in this one, leaving
-#   nothing for this comparison's per-cell subset to average and a
-#   degenerate testNhoods() fit for this tissue. n_tissue_cells (total
-#   member cells from this tissue, any group -- Control included, unlike
-#   n_group_cells) is included specifically so this can be checked
-#   directly rather than inferred -- a low n_tissue_cells alongside a
-#   zeroed-out row confirms this explanation; a healthy n_tissue_cells
-#   with n_group_cells == 0 instead means the neighborhood has plenty of
-#   this tissue's cells, just none from this specific disease group.
-# - sig is NA (not FALSE) when SpatialFDR itself is NA, rather than
-#   collapsing "genuinely tested and not significant" and "untested/
-#   degenerate fit" into the same FALSE value -- the latter is common for
-#   the tissue-starved neighborhoods described above.
-# - module_scores_ucell.csv is read with row.names = 1 (restoring real cell
-#   barcode rownames), not read as a plain data frame with an "X" gene/cell
-#   column the way this project's DESeq2 CSVs usually are -- barcodes are
-#   needed here as actual rownames for the incidence-matrix join, not as a
-#   data column.
+# into one long-format data frame -- one row per (neighborhood,
+# comparison) pair, each module's mean score computed from only that
+# comparison's own tissue/disease-group member cells (never Control, and
+# never pooled across comparisons) -- plus a few exploratory plots of
+# module score vs. neighborhood logFC. Interactive script, not a SLURM
+# job.
 
 suppressMessages({
   library(Seurat)

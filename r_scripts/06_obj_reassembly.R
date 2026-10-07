@@ -1,7 +1,9 @@
-# Reassembles the full 90-sample object from 04_doubletfinder.R's per-sample
-# outputs (bpcells_persample/<sample>/ + metadata_persample/<sample>.rds),
-# mirroring 01_obj_creation.R's own per-sample-load -> merge -> JoinLayers
-# pattern, which is already proven to work end-to-end on this dataset.
+# Reassembles the full 90-sample object from 04_doubletfinder.R's
+# per-sample outputs, merging and joining layers the same way
+# 01_obj_creation.R does. The resulting whole-cohort real raw counts are
+# the source every later script reaches back to when it needs genuine
+# counts rather than normalized data. Runs via jobs/06_obj_reassembly.sh
+# (single task).
 
 # Load libraries
 suppressMessages({

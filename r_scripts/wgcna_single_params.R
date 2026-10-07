@@ -1,14 +1,7 @@
 # One-time helper that generates jobs/wgcna_single_params.txt: every
-# (cell_type, tissue) combination that exists in 17_obj_reassembly.R's
-# output. wgcna_single.R runs hdWGCNA on literally every cell type in
-# every tissue -- not a deliberately-curated subset like 13/15/19's
-# targets -- so the params file is derived straight from the data rather
-# than hand-written.
-#
-# Run this once as a plain Rscript call (not an array job) whenever
-# 17_obj_reassembly.R's output or cell_type3 annotations change, then set
-# jobs/wgcna_single.sh's --array range to match the row count printed at
-# the end.
+# (cell type, tissue) combination in 17_obj_reassembly.R's output, for
+# wgcna_single.R's job array. Run by hand (not an array job) whenever
+# cell_type3 annotations change.
 
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
 

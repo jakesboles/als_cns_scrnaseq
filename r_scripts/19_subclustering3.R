@@ -1,57 +1,11 @@
-# Subclusters and re-integrates specific cell types that appear across
-# multiple tissues (e.g. microglia from both brain and spinal cord),
-# using 17_obj_reassembly.R's per-tissue metadata as the source. Runs as
-# a SLURM job array (see jobs/19_subclustering3.sh), one task per entry
-# in the hardcoded subclustering_targets list below -- targets are
-# heterogeneous (different tissue combinations and cell_type3 sets per
-# group) and were described inline by the user rather than as a params
-# file, matching this project's established convention for that case
-# (see 15_subclustering2.R's subclustering_targets).
-#
-# Outputs feed MiloR, a consensus hdWGCNA, and/or figures -- not another
-# annotation round, so unlike 13/15 this script does NOT recluster or run
-# FindAllMarkers(); it stops at Harmony integration plus one diagnostic
-# UMAP per group, matching 17_obj_reassembly.R/18_full_integration.R's
-# scope instead (confirmed with the user).
-#
-# Design notes:
-# - Each target lists the tissue(s) it needs; that tissue's
-#   data/17_obj_reassembly/<tissue>/metadata.rds is read and (for multi-
-#   tissue targets) bind_rows()'d together -- the same per-tissue
-#   metadata-concatenation pattern 18_full_integration.R uses, just
-#   scoped to whichever tissues a given target actually needs, rather
-#   than routing every target through 18's saved (all_tissues/brain_sc)
-#   output. That's a deliberate simplification: every target here rebuilds
-#   from real raw counts and refits its own Harmony integration on just
-#   its own cells anyway (see next point), so 18's own Harmony fit over a
-#   much larger, more heterogeneous population isn't actually used by
-#   anything downstream -- only the tissue metadata is needed, and
-#   18_full_integration.R's saved artifacts would be an unnecessary
-#   dependency for that.
-# - Real raw counts are pulled from data/06_obj_reassembly/bpcells (not
-#   17_obj_reassembly.R's own saved bpcells_data, which holds normalized
-#   data, not counts) -- the same pipeline-wide gotcha as every other
-#   script that reruns FindVariableFeatures() from scratch (13/15/17/18).
-# - RunPCA() uses npcs = 50, matching 13/15's cell-type/group-subset scale
-#   (not 07/17/18's npcs = 100 full-tissue scale) -- every target here is
-#   a single cell class or small group of related classes, smaller and
-#   more homogeneous than a whole tissue.
-# - cell_type3 vocabulary for each target was confirmed against the
-#   user's own DimPlot legends (brain_sc and all_tissues) rather than
-#   guessed:
-#   - "All neuron classes" = every EN/IN subtype label plus MN/SN.
-#   - "Myeloid cells" = Microglia/Macrophage/Monocyte/Neutrophil/Mast
-#     cell specifically -- NOT "Proliferating myeloid cell", per the
-#     user's explicit enumeration.
-#   - "Muscle fiber types" = every cell_type3 label containing "MF"
-#     (Denervated MF, Proliferating MF, Type I MF, Type II MF).
-# - RunUMAP() here is a fresh, unmodified default (no uwot.init override)
-#   -- these are much smaller, more homogeneous per-cell-type populations
-#   than 18_full_integration.R's whole-tissue objects, and far less likely
-#   to reproduce the near-disconnected-graph pathology that forced
-#   uwot.init = "pca" there. If a target segfaults the same way, that's
-#   the fix to reach for first (see 18_full_integration.R's header for
-#   the full diagnosis).
+# Subclusters and re-integrates specific cell types/cell-type groups that
+# appear across multiple tissues (e.g. microglia from both brain and
+# spinal cord), using 17_obj_reassembly.R's per-tissue metadata as the
+# source, as input for MiloR, consensus hdWGCNA, and related downstream
+# figures. Stops at Harmony integration plus one diagnostic UMAP per
+# group -- no reclustering or marker finding. Runs as a SLURM job array
+# (see jobs/19_subclustering3.sh), one task per entry in the hardcoded
+# subclustering_targets list below.
 
 suppressMessages({
   library(Seurat)

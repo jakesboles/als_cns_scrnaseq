@@ -1,3 +1,8 @@
+# Summarizes CellBender ambient-RNA-removal metrics across all samples,
+# before the main QC/object-assembly pipeline begins. Reads CellBender's
+# own per-sample output directories directly, not any object this
+# pipeline builds. Interactive script, not a SLURM job.
+
 library(tidyverse)
 library(scCustomize)
 library(ggplot2)

@@ -1,8 +1,8 @@
-# This script runs as a SLURM job array (see jobs/04_doubletfinder.sh), one
-# task per sample, instead of looping over all 90 samples in a single job.
-# Each task independently loads its own sample's raw per-sample BPCells
-# matrix from 01_obj_creation.R and the shared metadata saved by 03_qc2.R,
-# so no task ever materializes the whole-cohort object.
+# Runs DoubletFinder (adjusted and unadjusted) per sample, loading each
+# sample's own raw per-sample BPCells matrix from 01_obj_creation.R and
+# the shared metadata saved by 03_qc2.R, so no task materializes the
+# whole-cohort object. Runs as a SLURM job array (see
+# jobs/04_doubletfinder.sh), one task per sample.
 
 # Load libraries
 suppressMessages({

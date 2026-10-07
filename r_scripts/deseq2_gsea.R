@@ -1,3 +1,8 @@
+# Gene set enrichment analysis (GSEA, msigdbr C2/C5 gene sets) on
+# deseq2.R's LFC-shrunk results, for each tissue/cell type/contrast. Runs
+# via jobs/deseq2_gsea.sh (single task, loops over all 3 tissues/cell
+# types internally).
+
 library(tidyverse)
 library(ggrepel)
 library(ggplot2)

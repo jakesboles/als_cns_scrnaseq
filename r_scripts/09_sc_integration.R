@@ -1,15 +1,8 @@
-# Integrates the cervical spinal cord data across samples using Harmony, on
-# top of the PCA computed in 07_norm_pca.R. Writes the integrated
-# ("harmony") reduction alongside the normalized data as an on-disk BPCells
-# matrix, for 10_clustering.R to load and Leiden-cluster. Clustering itself
-# (and any marker-gene/cell-type inspection) is deliberately left to
-# 10/later steps -- this script's job ends at producing a corrected
-# embedding, plus a few plots to sanity check that the correction worked.
-#
-# Was briefly switched to CCA to compare -- CCA and Harmony gave similar
-# integration quality, and Harmony is meaningfully faster (it only needs
-# the PCA embedding, not dense per-sample expression access), so this is
-# back to Harmony for good.
+# Integrates the cervical spinal cord data across samples using Harmony,
+# on top of the PCA computed in 07_norm_pca.R, writing the corrected
+# embedding alongside normalized data for 10_clustering.R to cluster.
+# Runs via jobs/09_sc_integration.sh (single task, one script per tissue
+# rather than an array).
 
 # Load libraries
 suppressMessages({

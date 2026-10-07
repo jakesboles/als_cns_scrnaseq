@@ -1,26 +1,8 @@
 # Second-round marker finding for each of 13_subclustering1.R's cell-type
-# subclusterings, to help annotate the finer-grained clusters it produced.
-# Runs as a SLURM job array (see jobs/14_findmarkers2.sh), one task per
-# (tissue, cell type) combination listed in jobs/13_params.txt, same as
-# 13_subclustering1.R. Only markers/plots/an annotation template are
-# produced -- no expression or metadata output, since nothing downstream
-# needs a modified object from this script (15 will either do a third
-# annotation round or assemble the finalized objects, working from 13's
-# saved data plus the annotation.csv this script writes).
-#
-# Design notes (confirmed with the user before writing this):
-# - "old_labels" in the original request doesn't match any actual
-#   metadata column -- 13_subclustering1.R's saved metadata has
-#   "cell_type" (constant within each file, since each file is already
-#   subset to one cell type) and "round1_clusters" (the original numeric
-#   round-1 cluster labels). Using round1_clusters, which is the one that
-#   can actually show something on a DimPlot here.
-# - Output directory uses results/14_findmarkers2/..., matching every
-#   other script's convention (11/12/13), not the reversed
-#   14_findmarkers2/tab_data/... path in the original request -- that
-#   would have created a new top-level folder outside the existing
-#   .gitignore coverage (results/, data/, logs/ only). plots/ and
-#   tab_data/ were later merged into results/ across the whole pipeline.
+# subclusterings, to help annotate the finer-grained (cell_type2)
+# clusters it produced. Runs as a SLURM job array (see
+# jobs/14_findmarkers2.sh), one task per (tissue, cell type) combination
+# listed in jobs/13_params.txt, same as 13_subclustering1.R.
 
 suppressMessages({
   library(Seurat)
