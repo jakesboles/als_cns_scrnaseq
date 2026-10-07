@@ -152,3 +152,29 @@ for (i in mois){
 #   arrange(p.adjust) %>% 
 #   slice_head(n = 20) %>% 
 #   
+
+
+# Plots for MAD lunch 9/30/26 ---------------------------------------------
+
+modules %>%
+  filter(color == "turquoise") %>%
+  arrange(desc(kME_turquoise)) %>% 
+  slice_head(n = 15) %>% 
+  mutate(gene_name = fct_inorder(gene_name)) %>% 
+  ggplot(aes(x = kME_turquoise,
+             y = gene_name)) + 
+  geom_col() + 
+  scale_y_discrete(limits = rev) + 
+  scale_x_continuous(expand = c(0, 0)) + 
+  labs(x = "kME") + 
+  theme_linedraw() + 
+  theme(axis.title.y = element_blank())
+
+FeaturePlot_scCustom(obj,
+                     features = "turquoise_UCell_kNN",
+                     reduction = "umap",
+                     colors_use = viridis_dark_high) + 
+  ggtitle("Activation module 2") + 
+  theme(plot.title = element_text(face = "plain"))
+
+        
