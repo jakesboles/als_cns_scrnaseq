@@ -42,7 +42,8 @@ umap_labs <- labs(y = "UMAP 2",
                   x = "UMAP 1")
 
 umap_theme <- theme(axis.text = element_blank(),
-                    axis.ticks = element_blank())
+                    axis.ticks = element_blank(),
+                    aspect.ratio = 1)
 
 obj@meta.data <- obj@meta.data %>% 
   mutate(cell_type4 = case_when(str_detect(cell_type3, "MF") ~ "Muscle fiber",
