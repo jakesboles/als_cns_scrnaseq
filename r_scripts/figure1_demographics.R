@@ -13,8 +13,10 @@ library(ggbeeswarm)
 
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
-results_dir <- "figures/"
-dir.create(results_dir, showWarnings = F, recursive = T)
+source("r_scripts/plot_theme.R")
+
+results_dir0 <- "figures/"
+dir.create(results_dir0, showWarnings = F, recursive = T)
 
 df <- read_csv("tab_data/target_als_demographics_compiled.csv")
 
@@ -66,9 +68,11 @@ df <- df %>%
   mutate(x_local = row_number()) %>%
   ungroup()
 
+# Heatmap -----------------------------------------------------------------
 
 base_theme <- function(show_y_text = FALSE) {
   theme_minimal(base_size = 12) +
+    theme_als_project() +
     theme(
       axis.text.x    = element_blank(),
       axis.ticks     = element_blank(),
@@ -218,12 +222,22 @@ p <- p_group + p_c9 + p_age + p_sex + p_onset + p_duration + p_sc + p_ffpe +
         legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
         legend.title.position = "top")
 
+save_figure(p,
+            filename = paste0(results_dir0, "figure1/demographics_heatmap.pdf"),
+            height = 3.75, width = 10)
+
 ggsave(p,
        filename = paste0(results_dir, "demographics_heatmap.png"),
        units = "in", dpi = 600,
        height = 3.75, width = 10)
 
 # Age dot plot -----------------------------------------------------------
+
+results_dir <- paste0(results_dir0, "supp1/")
+
+dir.create(results_dir,
+           recursive = T,
+           showWarnings = F)
 
 kruskal.test(age_at_death ~ group,
              data = df)
@@ -248,10 +262,11 @@ df %>%
   scale_fill_manual(values = c("#b8b0a8", "#CC00FF", "#0CAA00")) + 
   labs(y = "Age (yr)") +
   theme_linedraw(base_size = 12) +
+  theme_als_project() +
   theme(axis.title.x = element_blank())
-ggsave(filename = paste0(results_dir, "age_dotplot.png"),
-       units = "in", dpi = 600,
-       height = 2.75, width = 3)
+save_figure(plot = last_plot(),
+          filename = paste0(results_dir, "age_dots.pdf"),
+          height = 2.75, width = 3.5)
 
 # Disease duration dot plot -----------------------------------------------
 
@@ -278,10 +293,11 @@ df2 %>%
   scale_fill_manual(values = c("#CC00FF", "#0CAA00")) + 
   labs(y = "Disease duration (yr)") +
   theme_linedraw(base_size = 12) +
+  theme_als_project() +
   theme(axis.title.x = element_blank())
-ggsave(filename = paste0(results_dir, "disease_duration_dotplot.png"),
-       units = "in", dpi = 600,
-       height = 2.75, width = 2)
+save_figure(plot = last_plot(),
+            filename = paste0(results_dir, "disease_duration_dots.pdf"),
+            height = 2.75, width = 2.5)
 
 # Sex figure --------------------------------------------------------------
 
@@ -295,14 +311,16 @@ df %>%
   geom_col(aes(fill = sex),
            color = "black") +
   scale_fill_manual(values = c("#DB5500", "#FFCFA4")) + 
-  scale_y_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0),
+                     breaks = seq(0, 11, by = 2)) +
   labs(y = "Count",
        fill = "Sex") +
   theme_linedraw(base_size = 12) +
+  theme_als_project() +
   theme(axis.title.x = element_blank())
-ggsave(filename = paste0(results_dir, "sex_barchart.png"),
-       units = "in", dpi = 600,
-       height = 2.75, width = 4)
+save_figure(plot = last_plot(),
+            filename = paste0(results_dir, "sex_bars.pdf"),
+            height = 2.75, width = 4.5)
 
 # Site of onset figure ----------------------------------------------------
 
@@ -320,11 +338,13 @@ df2 %>%
            color = "black") +
   scale_fill_manual(values = c("#FFD60A", "#8C7A1E", "#F0DE7D"),
                     na.value = "white") + 
-  scale_y_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0),
+                     breaks = seq(0, 11, by = 2)) +
   labs(y = "Count",
        fill = "Site of\nonset") +
   theme_linedraw(base_size = 12) +
+  theme_als_project() +
   theme(axis.title.x = element_blank())
-ggsave(filename = paste0(results_dir, "onset_site_barchart.png"),
-       units = "in", dpi = 600,
-       height = 2.75, width = 3.5)
+save_figure(plot = last_plot(),
+            filename = paste0(results_dir, "onset_site_bars.pdf"),
+            height = 2.75, width = 4)
