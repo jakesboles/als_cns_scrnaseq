@@ -55,6 +55,13 @@ rotate_x_text <- function(angle = 45){
   theme(axis.text.x = element_text(angle = angle, hjust = hjust, vjust = vjust))
 }
 
+umap_labs <- labs(y = "UMAP 2",
+                  x = "UMAP 1")
+
+umap_theme <- theme(axis.text = element_blank(),
+                    axis.ticks = element_blank(),
+                    aspect.ratio = 1)
+
 # Optional convenience wrapper around ggsave() for the PDF -> Illustrator
 # workflow -- see header note above. All ggsave() arguments still work;
 # device is the only one given a different default.
