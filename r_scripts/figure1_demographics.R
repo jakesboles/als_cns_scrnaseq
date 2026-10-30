@@ -216,20 +216,18 @@ p_sex <- plot_categorical(df,
 p <- p_group + p_c9 + p_age + p_sex + p_onset + p_duration + p_sc + p_ffpe +
   plot_layout(ncol = 1, widths = c(1.6, rep(1, 8))) +
   plot_layout(guides = "collect") &
+  # theme_als_project() &
   theme(legend.position = "bottom",
         legend.box = "horizontal",       # or "vertical" if it wraps awkwardly
         legend.spacing.x = unit(0.3, "cm"),
         legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
-        legend.title.position = "top")
+        legend.title.position = "top",
+        axis.title.x = element_blank(),
+        strip.background = element_rect(fill = "gray80"))
 
 save_figure(p,
             filename = paste0(results_dir0, "figure1/demographics_heatmap.pdf"),
             height = 3.75, width = 10)
-
-ggsave(p,
-       filename = paste0(results_dir, "demographics_heatmap.png"),
-       units = "in", dpi = 600,
-       height = 3.75, width = 10)
 
 # Age dot plot -----------------------------------------------------------
 
