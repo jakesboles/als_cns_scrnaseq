@@ -63,7 +63,7 @@ umap_celltype <- DimPlot_scCustom(obj,
   theme(plot.title = element_blank())
 save_figure(umap_celltype,
             filename = paste0(plots_dir, "umap_celltype.pdf"),
-            height = 7, width = 10)
+            height = 6, width = 7)
 # ggsave(filename = paste0(plots_dir, "umap_celltype.png"),
        # units = "in", dpi = 600,
        # height = 7, width = 10)

@@ -216,18 +216,19 @@ p_sex <- plot_categorical(df,
 p <- p_group + p_c9 + p_age + p_sex + p_onset + p_duration + p_sc + p_ffpe +
   plot_layout(ncol = 1, widths = c(1.6, rep(1, 8))) +
   plot_layout(guides = "collect") &
-  # theme_als_project() &
+  theme_als_project() &
   theme(legend.position = "bottom",
         legend.box = "horizontal",       # or "vertical" if it wraps awkwardly
-        legend.spacing.x = unit(0.3, "cm"),
+        legend.spacing.x = unit(0.2, "cm"),
         legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
         legend.title.position = "top",
         axis.title.x = element_blank(),
         strip.background = element_rect(fill = "gray80"))
+# HELP HERE
 
 save_figure(p,
             filename = paste0(results_dir0, "figure1/demographics_heatmap.pdf"),
-            height = 3.75, width = 10)
+            height = 3.5, width = 8.5)
 
 # Age dot plot -----------------------------------------------------------
 
@@ -259,12 +260,13 @@ df %>%
                width = 0.6) +
   scale_fill_manual(values = c("#b8b0a8", "#CC00FF", "#0CAA00")) + 
   labs(y = "Age (yr)") +
-  theme_linedraw(base_size = 12) +
+  theme_linedraw(base_size = 10) +
   theme_als_project() +
+  rotate_x_text() +
   theme(axis.title.x = element_blank())
 save_figure(plot = last_plot(),
           filename = paste0(results_dir, "age_dots.pdf"),
-          height = 2.75, width = 3.5)
+          height = 3, width = 2)
 
 # Disease duration dot plot -----------------------------------------------
 
@@ -290,12 +292,13 @@ df2 %>%
                width = 0.6) +
   scale_fill_manual(values = c("#CC00FF", "#0CAA00")) + 
   labs(y = "Disease duration (yr)") +
-  theme_linedraw(base_size = 12) +
+  theme_linedraw(base_size = 10) +
   theme_als_project() +
+  rotate_x_text() +
   theme(axis.title.x = element_blank())
 save_figure(plot = last_plot(),
             filename = paste0(results_dir, "disease_duration_dots.pdf"),
-            height = 2.75, width = 2.5)
+            height = 3, width = 1.45)
 
 # Sex figure --------------------------------------------------------------
 
@@ -313,12 +316,13 @@ df %>%
                      breaks = seq(0, 11, by = 2)) +
   labs(y = "Count",
        fill = "Sex") +
-  theme_linedraw(base_size = 12) +
+  theme_linedraw(base_size = 10) +
   theme_als_project() +
+  rotate_x_text() +
   theme(axis.title.x = element_blank())
 save_figure(plot = last_plot(),
             filename = paste0(results_dir, "sex_bars.pdf"),
-            height = 2.75, width = 4.5)
+            height = 3, width = 2.6)
 
 # Site of onset figure ----------------------------------------------------
 
@@ -340,9 +344,10 @@ df2 %>%
                      breaks = seq(0, 11, by = 2)) +
   labs(y = "Count",
        fill = "Site of\nonset") +
-  theme_linedraw(base_size = 12) +
+  theme_linedraw(base_size = 10) +
   theme_als_project() +
+  rotate_x_text() +
   theme(axis.title.x = element_blank())
 save_figure(plot = last_plot(),
             filename = paste0(results_dir, "onset_site_bars.pdf"),
-            height = 2.75, width = 4)
+            height = 3, width = 2.3)
