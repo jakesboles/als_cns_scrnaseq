@@ -38,13 +38,6 @@ dir.create(plots_dir,
            recursive = T,
            showWarnings = F)
 
-umap_labs <- labs(y = "UMAP 2",
-                  x = "UMAP 1")
-
-umap_theme <- theme(axis.text = element_blank(),
-                    axis.ticks = element_blank(),
-                    aspect.ratio = 1)
-
 obj@meta.data <- obj@meta.data %>% 
   mutate(cell_type4 = case_when(str_detect(cell_type3, "MF") ~ "Muscle fiber",
                                 str_detect(cell_type3, "EN|IN|MN|SN") ~ "Neuron",
@@ -52,54 +45,63 @@ obj@meta.data <- obj@meta.data %>%
 
 umap_celltype <- DimPlot_scCustom(obj,
                  group.by = "cell_type4",
-                 pt.size = 2,
-                 raster.dpi = c(900, 900),
+                 pt.size = 4,
+                 raster.dpi = c(1200, 1200),
                  colors_use = "polychrome") + 
-  guides(color = guide_legend(ncol = 1,
-                              override.aes = list(size = 4))) + 
+  guides(color = guide_legend(ncol = 2,
+                              override.aes = list(size = 2))) + 
   umap_labs +
   theme_als_project() + 
   umap_theme +
-  theme(plot.title = element_blank())
+  theme(plot.title = element_blank(),
+        legend.text = element_text(margin = margin(r = 0.01, unit = "cm")),
+        # legend.key.spacing.y = unit(0.01, "cm"),
+        legend.box.spacing = unit(0.1, "cm"))
 save_figure(umap_celltype,
             filename = paste0(plots_dir, "umap_celltype.pdf"),
-            height = 6, width = 7)
+            height = 3, width = 6.5)
 # ggsave(filename = paste0(plots_dir, "umap_celltype.png"),
        # units = "in", dpi = 600,
        # height = 7, width = 10)
 
 umap_tissue <- DimPlot_scCustom(obj,
                  group.by = "tissue",
-                 pt.size = 2,
-                 raster.dpi = c(900, 900),
+                 pt.size = 4,
+                 raster.dpi = c(1200, 1200),
                  colors_use = JCO_Four()) + 
   guides(color = guide_legend(ncol = 1,
-                              override.aes = list(size = 4))) + 
+                              override.aes = list(size = 2))) + 
   umap_labs +
-  theme_als_project() +
+  theme_als_project() + 
   umap_theme +
-  theme(plot.title = element_blank())
+  theme(plot.title = element_blank(),
+        legend.text = element_text(margin = margin(r = 0.01, unit = "cm")),
+        # legend.key.spacing.y = unit(0.01, "cm"),
+        legend.box.spacing = unit(0.1, "cm"))
 save_figure(umap_tissue,
             filename = paste0(plots_dir, "umap_tissue.pdf"),
-            height = 3.5, width = 6)
+            height = 3, width = 3.5)
 # ggsave(filename = paste0(plots_dir, "umap_tissue.png"),
        # units = "in", dpi = 600,
        # height = 7, width = 10)
 
 umap_group <- DimPlot_scCustom(obj,
                                 group.by = "group",
-                                pt.size = 2,
-                                raster.dpi = c(900, 900),
+                               pt.size = 4,
+                               raster.dpi = c(1200, 1200),
                                 colors_use = c("#b8b0a8", "#0CAA00", "#CC00FF")) + 
   guides(color = guide_legend(ncol = 1,
-                              override.aes = list(size = 4))) + 
+                              override.aes = list(size = 2))) + 
   umap_labs +
-  theme_als_project() +
+  theme_als_project() + 
   umap_theme +
-  theme(plot.title = element_blank())
+  theme(plot.title = element_blank(),
+        legend.text = element_text(margin = margin(r = 0.01, unit = "cm")),
+        # legend.key.spacing.y = unit(0.01, "cm"),
+        legend.box.spacing = unit(0.1, "cm"))
 save_figure(umap_group,
             filename = paste0(plots_dir, "umap_group.pdf"),
-            height = 3.5, width = 5)
+            height = 3, width = 3.5)
 
 # patchworked version to see if this is better for assembling in Illustrator
 design <- "
@@ -116,6 +118,8 @@ save_figure(last_plot(),
             height = 6, width = 13)
 
 # Highlight neurons and MFs since I collapsed their labels ----------------
+
+# 11/4/26 need to remake these! 
 
 plots_dir <- paste0(plots_dir0, "supp2/")
 dir.create(plots_dir,

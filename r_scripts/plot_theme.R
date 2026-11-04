@@ -16,7 +16,7 @@ suppressMessages({
   library(ggplot2)
 })
 
-theme_als_project <- function(base_size = 8,
+theme_als_project <- function(base_size = 6,
                               title_size = base_size * 1.5,
                               title_face = "plain",
                               strip_fill = "gray80",

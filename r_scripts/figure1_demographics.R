@@ -167,28 +167,28 @@ plot_categorical <- function(data,
 p_c9 <- plot_categorical(df,
                  "c9orf72_mutation",
                  y_label = "C9orf72 HRE",
-                 fill_label = "C9orf72\nHRE",
+                 fill_label = "C9orf72 HRE",
                  palette = c("#D6249F", "#E5E1DC")) + 
   theme(strip.text.x = element_blank())
 
 p_onset <- plot_categorical(df,
                             "onset_site",
                             y_label = "Site of onset",
-                            fill_label = "Site of\nonset",
+                            fill_label = "Site of onset",
                             palette = c("#FFD60A", "#8C7A1E", "#F0DE7D")) + 
   theme(strip.text.x = element_blank())
 
 p_age <- plot_continuous(df,
                 "age_at_death",
                 y_label = "Age at death",
-                fill_label = "Age at\ndeath",
+                fill_label = "Age at death",
                 palette = "ggthemes::Red") + 
   theme(strip.text.x = element_blank())
 
 p_group <- plot_categorical(df,
                  "clinical_diagnosis",
                  y_label = "Clinical diagnosis",
-                 fill_label = "Clinical\ndiagnosis",
+                 fill_label = "Clinical diagnosis",
                  palette = c("#b8b0a8", "#6a3d9a", "#c3a6e1")) + 
   theme(strip.text = element_text(size = 12),
         strip.background = element_rect(fill = "transparent", color = "black"))
@@ -196,7 +196,7 @@ p_group <- plot_categorical(df,
 p_duration <- plot_continuous(df,
                 "disease_duration",
                 y_label = "Disease duration",
-                fill_label = "Disease\nduration",
+                fill_label = "Disease duration",
                 palette = "ggthemes::Green") + 
   theme(strip.text.x = element_blank())
 
@@ -211,7 +211,7 @@ p_sc <- plot_categorical(df,
 p_ffpe <- plot_categorical(df,
                            "ffpe",
                            y_label = "Spatial biology",
-                           fill_label = "Spatial\nbiology",
+                           fill_label = "Spatial biology",
                            palette = c("midnightblue", "#E5E1DC")) + 
   theme(legend.position = "none") + 
   theme(strip.text.x = element_blank())
@@ -230,16 +230,17 @@ p <- p_group + p_c9 + p_age + p_sex + p_onset + p_duration + p_sc + p_ffpe +
   theme(legend.position = "bottom",
         legend.box = "horizontal",       # or "vertical" if it wraps awkwardly
         legend.spacing.x = unit(0.2, "cm"),
+        legend.key.spacing.y = unit(0.1, "cm"),
         legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
         legend.box.spacing = unit(0.1, "cm"), # gap between the plot panels and the collected legend block
         legend.title.position = "top",
         axis.title.x = element_blank(),
         strip.background = element_rect(fill = "white"),
-        strip.text = element_text(size = 9))
+        strip.text = element_text(size = 7))
 
 save_figure(p,
             filename = paste0(results_dir0, "figure1/demographics_heatmap.pdf"),
-            height = 2.5, width = 6.5)
+            height = 2.25, width = 6.5)
 
 # Age dot plot -----------------------------------------------------------
 
