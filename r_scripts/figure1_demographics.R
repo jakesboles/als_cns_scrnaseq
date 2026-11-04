@@ -261,7 +261,7 @@ df %>%
   geom_quasirandom(aes(fill = group),
                    shape = 21,
                    show.legend = F,
-                   size = 4,
+                   size = 3,
                    alpha = 0.7) + 
   stat_summary(fun = mean,
                geom = "crossbar") +
@@ -277,7 +277,7 @@ df %>%
   theme(axis.title.x = element_blank())
 save_figure(plot = last_plot(),
           filename = paste0(results_dir, "age_dots.pdf"),
-          height = 3, width = 2)
+          height = 2, width = 1.5)
 
 # Disease duration dot plot -----------------------------------------------
 
@@ -293,7 +293,7 @@ df2 %>%
   geom_quasirandom(aes(fill = group),
                    shape = 21,
                    show.legend = F,
-                   size = 4,
+                   size = 3,
                    alpha = 0.7) + 
   stat_summary(fun = mean,
                geom = "crossbar") +
@@ -309,7 +309,7 @@ df2 %>%
   theme(axis.title.x = element_blank())
 save_figure(plot = last_plot(),
             filename = paste0(results_dir, "disease_duration_dots.pdf"),
-            height = 3, width = 1.45)
+            height = 2, width = 1.12)
 
 # Sex figure --------------------------------------------------------------
 
@@ -330,10 +330,11 @@ df %>%
   theme_linedraw(base_size = 10) +
   theme_als_project() +
   rotate_x_text() +
-  theme(axis.title.x = element_blank())
+  theme(axis.title.x = element_blank(),
+        legend.box.spacing = unit(0.1, "cm"))
 save_figure(plot = last_plot(),
             filename = paste0(results_dir, "sex_bars.pdf"),
-            height = 3, width = 2.6)
+            height = 2, width = 2)
 
 # Site of onset figure ----------------------------------------------------
 
@@ -358,7 +359,8 @@ df2 %>%
   theme_linedraw(base_size = 10) +
   theme_als_project() +
   rotate_x_text() +
-  theme(axis.title.x = element_blank())
+  theme(axis.title.x = element_blank(),
+        legend.box.spacing = unit(0.1, "cm"))
 save_figure(plot = last_plot(),
             filename = paste0(results_dir, "onset_site_bars.pdf"),
-            height = 3, width = 2.3)
+            height = 2, width = 1.8)
