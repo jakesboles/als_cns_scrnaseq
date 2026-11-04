@@ -231,7 +231,7 @@ p <- p_group + p_c9 + p_age + p_sex + p_onset + p_duration + p_sc + p_ffpe +
         legend.box = "horizontal",       # or "vertical" if it wraps awkwardly
         legend.spacing.x = unit(0.2, "cm"),
         legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
-        legend.box.spacing = unit(0, "pt"), # gap between the plot panels and the collected legend block
+        legend.box.spacing = unit(0.1, "cm"), # gap between the plot panels and the collected legend block
         legend.title.position = "top",
         axis.title.x = element_blank(),
         strip.background = element_rect(fill = "white"),
