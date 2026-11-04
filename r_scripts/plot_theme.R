@@ -2,17 +2,15 @@
 # project: theme_als_project() is a theme() overlay (not a full theme --
 # added on top of whatever base theme/panel look a plot already has)
 # pinning plot/axis/legend/strip text to one consistent size/face/color/
-# font/justification, usable on any ggplot-returning call (raw ggplot2,
-# DimPlot(), dittoSeq, etc.). Font defaults to Arial (font_family arg) --
-# ggplot2's own default resolved to DejaVu Sans on this system, which
-# Illustrator doesn't fully support. rotate_x_text() pairs an axis-text
-# angle with its correct hjust/vjust automatically. save_figure() wraps
+# justification, usable on any ggplot-returning call (raw ggplot2,
+# DimPlot(), dittoSeq, etc.). rotate_x_text() pairs an axis-text angle
+# with its correct hjust/vjust automatically. save_figure() wraps
 # ggsave() with cairo_pdf as the default device, for more faithful font
-# embedding in PDFs headed into Illustrator. Meant to be source()'d from
-# every figure script, not copied into each one -- deliberately
-# centralized, unlike this project's usual per-script helpers, since
-# copies of a consistency tool can drift exactly like this project's
-# existing scattered theme() calls already have.
+# embedding in PDFs headed into Illustrator (font itself is left at R's
+# default and changed manually on import instead -- Arial isn't
+# installed on the HPC). Meant to be source()'d from every figure
+# script, not copied into each one, as a deliberate exception to this
+# project's usual per-script-helpers convention.
 
 suppressMessages({
   library(ggplot2)
@@ -22,10 +20,8 @@ theme_als_project <- function(base_size = 8,
                               title_size = base_size * 1.5,
                               title_face = "plain",
                               strip_fill = "gray80",
-                              text_color = "black",
-                              font_family = "Arial"){
+                              text_color = "black"){
   theme(
-    text = element_text(family = font_family),
     plot.title = element_text(size = title_size, face = title_face,
                               hjust = 0.5, color = text_color),
     axis.title.x = element_text(size = base_size, color = text_color,
