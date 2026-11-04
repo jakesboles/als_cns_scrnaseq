@@ -71,8 +71,8 @@ df <- df %>%
 # Heatmap -----------------------------------------------------------------
 
 base_theme <- function(show_y_text = FALSE) {
-  theme_minimal(base_size = 12) +
-    theme_als_project() +
+  theme_minimal(base_size = 8) +
+    # theme_als_project() +
     theme(
       axis.text.x    = element_blank(),
       axis.ticks     = element_blank(),
@@ -87,7 +87,7 @@ base_theme <- function(show_y_text = FALSE) {
       # plot.title.position = "plot",
       legend.key.size = unit(0.35, "cm"),
       legend.text    = element_text(size = 8),
-      legend.title   = element_text(size = 10)
+      legend.title   = element_text(size = 8)
     )
 }
 
@@ -108,7 +108,8 @@ add_na_strike <- function(plot, data, var, color = "red", linewidth = 0.5, inset
 
 plot_continuous <- function(data, 
                             var, 
-                            label, 
+                            y_label,
+                            fill_label,
                             palette = NULL,
                             show_y_text = FALSE) {
   p <- ggplot(data, aes(y = 1, 
@@ -116,8 +117,8 @@ plot_continuous <- function(data,
                    fill = .data[[var]])) +
     geom_tile(color = "black", 
               linewidth = 0.4) +
-    labs(y = label,
-         fill = label) +
+    labs(y = y_label,
+         fill = fill_label) +
     scale_x_continuous(expand = c(0, 0)) +
     facet_grid(~ group, scales = "free_x", space = "free_x") +
     base_theme(show_y_text)
@@ -136,15 +137,16 @@ plot_continuous <- function(data,
 
 plot_categorical <- function(data, 
                              var, 
-                             label, 
+                             y_label, 
+                             fill_label,                       
                              palette = NULL, 
                              show_y_text = FALSE) {
   p <- ggplot(data, aes(y = 1, 
                         x = x_local, 
                         fill = .data[[var]])) +
     geom_tile(color = "black", linewidth = 0.4) +
-    labs(y = label,
-         fill = label) +
+    labs(y = y_label,
+         fill = fill_label) +
     scale_x_continuous(expand = c(0, 0)) +
     facet_grid(~ group, scales = "free_x", space = "free_x") +
     base_theme(show_y_text)
@@ -152,11 +154,11 @@ plot_categorical <- function(data,
   p <- add_na_strike(p, data, var)
   
   if (!is.null(palette)) {
-    p + scale_fill_manual(values = palette, name = label, na.value = "white",
+    p + scale_fill_manual(values = palette, name = fill_label, na.value = "white",
                           na.translate = F,
                           guide = guide_legend(ncol = 1))
   } else {
-    p + scale_fill_brewer(palette = "Set2", name = label, na.value = "white",
+    p + scale_fill_brewer(palette = "Set2", name = fill_label, na.value = "white",
                           na.translate = F,
                           guide = guide_legend(ncol = 1))
   }
@@ -164,52 +166,60 @@ plot_categorical <- function(data,
 
 p_c9 <- plot_categorical(df,
                  "c9orf72_mutation",
-                 label = "C9orf72 HRE",
+                 y_label = "C9orf72 HRE",
+                 fill_label = "C9orf72\nHRE",
                  palette = c("#D6249F", "#E5E1DC")) + 
   theme(strip.text.x = element_blank())
 
 p_onset <- plot_categorical(df,
                             "onset_site",
-                            label = "Site of onset",
+                            y_label = "Site of onset",
+                            fill_label = "Site of\nonset",
                             palette = c("#FFD60A", "#8C7A1E", "#F0DE7D")) + 
   theme(strip.text.x = element_blank())
 
 p_age <- plot_continuous(df,
                 "age_at_death",
-                label = "Age at death",
+                y_label = "Age at death",
+                fill_label = "Age at\ndeath",
                 palette = "ggthemes::Red") + 
   theme(strip.text.x = element_blank())
 
 p_group <- plot_categorical(df,
                  "clinical_diagnosis",
-                 label = "Clinical diagnosis",
+                 y_label = "Clinical diagnosis",
+                 fill_label = "Clinical\ndiagnosis",
                  palette = c("#b8b0a8", "#6a3d9a", "#c3a6e1")) + 
   theme(strip.text = element_text(size = 12),
         strip.background = element_rect(fill = "transparent", color = "black"))
 
 p_duration <- plot_continuous(df,
                 "disease_duration",
-                label = "Disease duration",
+                y_label = "Disease duration",
+                fill_label = "Disease\nduration",
                 palette = "ggthemes::Green") + 
   theme(strip.text.x = element_blank())
 
 p_sc <- plot_categorical(df,
                          "sc",
-                         label = "scRNAseq",
+                         y_label = "scRNAseq",
+                         fill_label = "scRNAseq",
                          palette = c("#00B4D8", "#E5E1DC")) + 
   theme(legend.position = "none") + 
   theme(strip.text.x = element_blank())
 
 p_ffpe <- plot_categorical(df,
                            "ffpe",
-                           label = "Spatial biology",
+                           y_label = "Spatial biology",
+                           fill_label = "Spatial\nbiology",
                            palette = c("midnightblue", "#E5E1DC")) + 
   theme(legend.position = "none") + 
   theme(strip.text.x = element_blank())
 
 p_sex <- plot_categorical(df,
                  "sex",
-                 label = "Sex",
+                 y_label = "Sex",
+                 fill_label = "Sex",
                  palette = c("#DB5500", "#FFCFA4")) + 
   theme(strip.text.x = element_blank())
 
@@ -223,12 +233,13 @@ p <- p_group + p_c9 + p_age + p_sex + p_onset + p_duration + p_sc + p_ffpe +
         legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
         legend.title.position = "top",
         axis.title.x = element_blank(),
-        strip.background = element_rect(fill = "gray80"))
+        strip.background = element_rect(fill = "white"),
+        strip.text = element_text(size = 9))
 # HELP HERE
 
 save_figure(p,
             filename = paste0(results_dir0, "figure1/demographics_heatmap.pdf"),
-            height = 3.5, width = 8.5)
+            height = 2.5, width = 6.5)
 
 # Age dot plot -----------------------------------------------------------
 
