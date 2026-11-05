@@ -1,6 +1,7 @@
 library(ggplot2)
 library(tidyverse)
 library(patchwork)
+library(ggrastr)
 
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
@@ -33,7 +34,10 @@ p_umi <- df %>%
              y = nCount_RNA)) + 
   facet_wrap(. ~ tissue,
              nrow = 1) + 
-  geom_violin(aes(fill = group)) +
+  ggrastr::rasterize(
+    geom_violin(aes(fill = group),
+                linewidth = 0.25),
+    dpi = 600) +
   scale_fill_manual(values = c("#b8b0a8", "#0CAA00", "#CC00FF")) + 
   labs(y = "# UMIs per cell",
        x = "Donor") +
@@ -52,8 +56,10 @@ p_feature <- df %>%
              y = nFeature_RNA)) + 
   facet_wrap(. ~ tissue,
              nrow = 1) + 
-  geom_violin(aes(fill = group)) +
-  scale_fill_manual(values = c("#b8b0a8", "#0CAA00", "#CC00FF")) + 
+  ggrastr::rasterize(
+    geom_violin(aes(fill = group),
+                linewidth = 0.25),
+    dpi = 600) +  scale_fill_manual(values = c("#b8b0a8", "#0CAA00", "#CC00FF")) + 
   labs(y = "# genes per cell",
        x = "Donor") +
   scale_y_log10() + 
@@ -71,8 +77,10 @@ p_mito <- df %>%
              y = percent_mito)) + 
   facet_wrap(. ~ tissue,
              nrow = 1) + 
-  geom_violin(aes(fill = group)) +
-  scale_fill_manual(values = c("#b8b0a8", "#0CAA00", "#CC00FF")) + 
+  ggrastr::rasterize(
+    geom_violin(aes(fill = group),
+                linewidth = 0.25),
+    dpi = 600) +  scale_fill_manual(values = c("#b8b0a8", "#0CAA00", "#CC00FF")) + 
   labs(y = "% mitochondrial\ngenes per cell",
        x = "Donor") +
   theme_linedraw() +
