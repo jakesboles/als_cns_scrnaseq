@@ -116,14 +116,14 @@ plot_continuous <- function(data,
                    x = x_local, 
                    fill = .data[[var]])) +
     geom_tile(color = "black", 
-              linewidth = 0.4) +
+              linewidth = 0.25) +
     labs(y = y_label,
          fill = fill_label) +
     scale_x_continuous(expand = c(0, 0)) +
     facet_grid(~ group, scales = "free_x", space = "free_x") +
     base_theme(show_y_text)
   
-  p <- add_na_strike(p, data, var)
+  # p <- add_na_strike(p, data, var)
   
   if (!is.null(palette)) { 
     p + scale_fill_paletteer_c(palette, na.value = "white",
@@ -144,14 +144,16 @@ plot_categorical <- function(data,
   p <- ggplot(data, aes(y = 1, 
                         x = x_local, 
                         fill = .data[[var]])) +
-    geom_tile(color = "black", linewidth = 0.4) +
+    geom_tile(color = "black", linewidth = 0.25) +
     labs(y = y_label,
          fill = fill_label) +
     scale_x_continuous(expand = c(0, 0)) +
     facet_grid(~ group, scales = "free_x", space = "free_x") +
+    guides(fill = guide_legend(direction = "vertical",
+                               override.aes = list(color = NA))) +
     base_theme(show_y_text)
   
-  p <- add_na_strike(p, data, var)
+  # p <- add_na_strike(p, data, var)
   
   if (!is.null(palette)) {
     p + scale_fill_manual(values = palette, name = fill_label, na.value = "white",
@@ -230,17 +232,18 @@ p <- p_group + p_c9 + p_age + p_sex + p_onset + p_duration + p_sc + p_ffpe +
   theme(legend.position = "bottom",
         legend.box = "horizontal",       # or "vertical" if it wraps awkwardly
         legend.spacing.x = unit(0.2, "cm"),
-        legend.key.spacing.y = unit(0.1, "cm"),
+        legend.key.spacing.y = unit(0.03, "cm"),
         legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
         legend.box.spacing = unit(0.1, "cm"), # gap between the plot panels and the collected legend block
         legend.title.position = "top",
+        legend.title = element_text(margin = margin(b = 0.05, unit = "cm")),
         axis.title.x = element_blank(),
         strip.background = element_rect(fill = "white"),
         strip.text = element_text(size = 7))
 
 save_figure(p,
             filename = paste0(results_dir0, "figure1/demographics_heatmap.pdf"),
-            height = 2.25, width = 6.5)
+            height = 1.75, width = 6.5)
 
 # Age dot plot -----------------------------------------------------------
 
@@ -256,7 +259,7 @@ kruskal.test(age_at_death ~ group,
 anova(lm(age_at_death ~ group,
       data = df))
 
-df %>%
+p_age <- df %>%
   ggplot(aes(x = group,
              y = age_at_death)) + 
   geom_quasirandom(aes(fill = group),
@@ -276,7 +279,7 @@ df %>%
   theme_als_project() +
   rotate_x_text() +
   theme(axis.title.x = element_blank())
-save_figure(plot = last_plot(),
+save_figure(plot = p_age,
           filename = paste0(results_dir, "age_dots.pdf"),
           height = 2, width = 1.5)
 
@@ -288,7 +291,7 @@ df2 <- df %>%
 wilcox.test(disease_duration ~ group,
             data = df2)
 
-df2 %>%
+p_duration <- df2 %>%
   ggplot(aes(x = group,
              y = disease_duration)) + 
   geom_quasirandom(aes(fill = group),
@@ -308,7 +311,7 @@ df2 %>%
   theme_als_project() +
   rotate_x_text() +
   theme(axis.title.x = element_blank())
-save_figure(plot = last_plot(),
+save_figure(plot = p_duration,
             filename = paste0(results_dir, "disease_duration_dots.pdf"),
             height = 2, width = 1.12)
 
@@ -316,16 +319,19 @@ save_figure(plot = last_plot(),
 
 fisher.test(df$group, df$sex)
 
-df %>% 
+p_sex <- df %>% 
   group_by(group, sex) %>%
   summarize(n = n()) %>%
   ggplot(aes(x = group,
              y = n)) + 
   geom_col(aes(fill = sex),
-           color = "black") +
+           color = "black",
+           linewidth = 0.25) +
   scale_fill_manual(values = c("#DB5500", "#FFCFA4")) + 
   scale_y_continuous(expand = c(0, 0),
                      breaks = seq(0, 11, by = 2)) +
+  guides(fill = guide_legend(direction = "vertical",
+                             override.aes = list(color = NA))) +
   labs(y = "Count",
        fill = "Sex") +
   theme_linedraw(base_size = 10) +
@@ -333,7 +339,7 @@ df %>%
   rotate_x_text() +
   theme(axis.title.x = element_blank(),
         legend.box.spacing = unit(0.1, "cm"))
-save_figure(plot = last_plot(),
+save_figure(plot = p_sex,
             filename = paste0(results_dir, "sex_bars.pdf"),
             height = 2, width = 2)
 
@@ -344,17 +350,21 @@ df2 <- df %>%
 
 chisq.test(df2$group, df2$onset_site)
 
-df2 %>% 
+p_onset <- df2 %>% 
   group_by(group, onset_site) %>% 
   summarize(n = n()) %>%
   ggplot(aes(x = group,
              y = n)) + 
   geom_col(aes(fill = onset_site),
-           color = "black") +
+           color = "black",
+           linewidth = 0.25) +
   scale_fill_manual(values = c("#FFD60A", "#8C7A1E", "#F0DE7D"),
-                    na.value = "white") + 
+                    na.value = "white",
+                    na.translate = F) + 
   scale_y_continuous(expand = c(0, 0),
                      breaks = seq(0, 11, by = 2)) +
+  guides(fill = guide_legend(direction = "vertical",
+                             override.aes = list(color = NA))) +
   labs(y = "Count",
        fill = "Site of\nonset") +
   theme_linedraw(base_size = 10) +
@@ -362,6 +372,15 @@ df2 %>%
   rotate_x_text() +
   theme(axis.title.x = element_blank(),
         legend.box.spacing = unit(0.1, "cm"))
-save_figure(plot = last_plot(),
+save_figure(plot = p_onset,
             filename = paste0(results_dir, "onset_site_bars.pdf"),
             height = 2, width = 1.8)
+
+
+# Patchwork for supp 1 ----------------------------------------------------
+
+p_age + p_duration + p_sex + p_onset + 
+  plot_layout(nrow = 1)
+save_figure(plot = last_plot(),
+            filename = paste0(results_dir, "demographic_patchwork.pdf"),
+            height = 1.75, width = 6.5)
