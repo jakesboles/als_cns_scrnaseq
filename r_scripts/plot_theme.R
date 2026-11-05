@@ -18,7 +18,7 @@ suppressMessages({
 theme_als_project <- function(base_size = 6,
                               title_size = base_size * 1.5,
                               title_face = "plain",
-                              strip_fill = "gray80",
+                              strip_fill = "white",
                               text_color = "black",
                               legend_key_size = unit(8, "pt")){
   theme(
