@@ -1,16 +1,15 @@
 # Shared plot-styling helpers for consistent figures across this
-# project: theme_als_project() is a theme() overlay (not a full theme --
-# added on top of whatever base theme/panel look a plot already has)
-# pinning plot/axis/legend/strip text to one consistent size/face/color/
-# justification, usable on any ggplot-returning call (raw ggplot2,
-# DimPlot(), dittoSeq, etc.). rotate_x_text() pairs an axis-text angle
-# with its correct hjust/vjust automatically. save_figure() wraps
-# ggsave() with cairo_pdf as the default device, for more faithful font
-# embedding in PDFs headed into Illustrator (font itself is left at R's
-# default and changed manually on import instead -- Arial isn't
-# installed on the HPC). Meant to be source()'d from every figure
-# script, not copied into each one, as a deliberate exception to this
-# project's usual per-script-helpers convention.
+# project: theme_als_project() is a theme() overlay (not a full theme)
+# pinning plot/axis/legend/strip text and legend key size to one
+# consistent look, usable on any ggplot-returning call (raw ggplot2,
+# DimPlot(), dittoSeq, etc.). rotate_x_text() and no_key_outline() are
+# separate opt-in helpers (axis-text rotation; stripping geom_tile()/
+# geom_col()'s outline colour from just the legend key, not the plot)
+# since not every plot needs them. save_figure() wraps ggsave() with
+# cairo_pdf as the default device for more faithful PDF font embedding.
+# Meant to be source()'d from every figure script, not copied into each
+# one, as a deliberate exception to this project's per-script-helpers
+# convention.
 
 suppressMessages({
   library(ggplot2)
@@ -20,7 +19,8 @@ theme_als_project <- function(base_size = 6,
                               title_size = base_size * 1.5,
                               title_face = "plain",
                               strip_fill = "gray80",
-                              text_color = "black"){
+                              text_color = "black",
+                              legend_key_size = unit(8, "pt")){
   theme(
     plot.title = element_text(size = title_size, face = title_face,
                               hjust = 0.5, color = text_color),
@@ -30,6 +30,8 @@ theme_als_project <- function(base_size = 6,
     axis.text = element_text(size = base_size, color = text_color),
     legend.title = element_text(size = base_size, color = text_color),
     legend.text = element_text(size = base_size, color = text_color),
+    legend.key.size = legend_key_size,
+    legend.key = element_rect(fill = NA, color = NA),
     strip.text = element_text(size = base_size, face = "bold",
                               color = text_color),
     strip.background = element_rect(fill = strip_fill, color = "black")
@@ -53,6 +55,20 @@ rotate_x_text <- function(angle = 45){
   }
 
   theme(axis.text.x = element_text(angle = angle, hjust = hjust, vjust = vjust))
+}
+
+# Strips the outline colour from a legend's key swatches without
+# touching the outline drawn in the plot itself -- geom_tile()/
+# geom_col()'s own colour= outline parameter bleeds into the legend key
+# glyph, and that's not something theme() alone can override, since the
+# key glyph is drawn from the layer's own colour/linewidth, not a theme
+# element. aes_name is whichever aesthetic generates the legend --
+# almost always "fill" for geom_tile()/geom_col() in this project.
+no_key_outline <- function(aes_name = "fill"){
+  do.call(guides, setNames(
+    list(guide_legend(override.aes = list(colour = NA, linewidth = NA))),
+    aes_name
+  ))
 }
 
 umap_labs <- labs(y = "UMAP 2",
@@ -84,5 +100,10 @@ save_figure <- function(plot, filename, device = cairo_pdf, ...){
 #
 # DimPlot_scCustom(obj, group.by = "cell_type3") +
 #   theme_als_project(title_size = 20)
+#
+# ggplot(df, aes(x = group, y = var, fill = value)) +
+#   geom_tile(color = "black", linewidth = 0.4) +
+#   theme_als_project() +
+#   no_key_outline()
 #
 # save_figure(p, "figures/some_plot.pdf", height = 5, width = 6)
