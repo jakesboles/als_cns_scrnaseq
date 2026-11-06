@@ -32,7 +32,7 @@ theme_als_project <- function(base_size = 6,
     legend.text = element_text(size = base_size, color = text_color),
     legend.key.size = legend_key_size,
     legend.key = element_rect(fill = NA, color = NA),
-    strip.text = element_text(size = base_size, face = "bold",
+    strip.text = element_text(size = base_size, face = "plain",
                               color = text_color),
     strip.background = element_rect(fill = strip_fill, color = "black")
   )
