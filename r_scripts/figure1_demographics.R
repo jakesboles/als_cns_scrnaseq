@@ -387,4 +387,4 @@ p_age + p_duration + p_sex + p_onset +
   plot_layout(nrow = 1)
 save_figure(plot = last_plot(),
             filename = paste0(results_dir, "demographic_patchwork.pdf"),
-            height = 1.75, width = 6.5)
+            height = 2.25, width = 6.5)
