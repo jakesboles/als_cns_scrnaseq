@@ -214,7 +214,7 @@ plot_fc_scatter("brain", "C9orf72_vs_Control",
                 "sc", "C9orf72_vs_Control",
                 label_2 = "SC",
                 label_1 = "MCX") + 
-  scale_color_manual(values = c("darkslategrey", "#EFC000", "#0073C2")) + 
+  scale_color_manual(values = c("darkslategrey", "#0073C2", "#EFC000")) + 
   ggtitle("Motor cortex vs cervical spinal\ncord DEGs in C9orf72-ALS")
 save_figure(plot = last_plot(),
             filename = paste0(plots_dir, "multivolcano_c9.pdf"),
