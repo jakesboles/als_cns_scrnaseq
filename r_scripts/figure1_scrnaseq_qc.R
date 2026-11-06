@@ -41,9 +41,10 @@ p_umi <- df %>%
   scale_fill_manual(values = c("#b8b0a8", "#0CAA00", "#CC00FF")) + 
   labs(y = "# UMIs per cell",
        x = "Donor") +
+  ggtitle("Counts per cell") +
   scale_y_log10() + 
   theme_linedraw() +
-  theme_als_project() + 
+  theme_als_project(title_size = 7) + 
   qc_theme
 # ggsave(filename = paste0(plots_dir, "ncount.png"),
 #        units = "in", dpi = 600,
@@ -62,9 +63,10 @@ p_feature <- df %>%
     dpi = 600) +  scale_fill_manual(values = c("#b8b0a8", "#0CAA00", "#CC00FF")) + 
   labs(y = "# genes per cell",
        x = "Donor") +
+  ggtitle("Unique genes per cell") +
   scale_y_log10() + 
   theme_linedraw() +
-  theme_als_project() + 
+  theme_als_project(title_size = 7) + 
   qc_theme
 # ggsave(filename = paste0(plots_dir, "nfeature.png"),
        # units = "in", dpi = 600,
@@ -83,8 +85,9 @@ p_mito <- df %>%
     dpi = 600) +  scale_fill_manual(values = c("#b8b0a8", "#0CAA00", "#CC00FF")) + 
   labs(y = "% mitochondrial\ngenes per cell",
        x = "Donor") +
+  ggtitle("Mitochondrial genes per cell") +
   theme_linedraw() +
-  theme_als_project() + 
+  theme_als_project(title_size = 7) + 
   qc_theme
 # ggsave(filename = paste0(plots_dir, "mito.png"),
        # units = "in", dpi = 600,
