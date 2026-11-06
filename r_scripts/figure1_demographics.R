@@ -275,8 +275,9 @@ p_age <- df %>%
                width = 0.6) +
   scale_fill_manual(values = c("#b8b0a8", "#CC00FF", "#0CAA00")) + 
   labs(y = "Age (yr)") +
-  theme_linedraw(base_size = 10) +
-  theme_als_project() +
+  ggtitle("Age at death") +
+  theme_linedraw() +
+  theme_als_project(title_size = 7) +
   rotate_x_text() +
   theme(axis.title.x = element_blank())
 save_figure(plot = p_age,
@@ -307,8 +308,9 @@ p_duration <- df2 %>%
                width = 0.6) +
   scale_fill_manual(values = c("#CC00FF", "#0CAA00")) + 
   labs(y = "Disease duration (yr)") +
-  theme_linedraw(base_size = 10) +
-  theme_als_project() +
+  ggtitle("ALS disease duration") +
+  theme_linedraw() +
+  theme_als_project(title_size = 7) +
   rotate_x_text() +
   theme(axis.title.x = element_blank())
 save_figure(plot = p_duration,
@@ -332,13 +334,14 @@ p_sex <- df %>%
                      breaks = seq(0, 11, by = 2)) +
   guides(fill = guide_legend(direction = "vertical",
                              override.aes = list(color = NA))) +
-  labs(y = "Count",
-       fill = "Sex") +
-  theme_linedraw(base_size = 10) +
-  theme_als_project() +
+  labs(y = "Count") +
+  ggtitle("Sex") +
+  theme_linedraw() +
+  theme_als_project(title_size = 7) +
   rotate_x_text() +
   theme(axis.title.x = element_blank(),
-        legend.box.spacing = unit(0.1, "cm"))
+        legend.box.spacing = unit(0.1, "cm"),
+        legend.title = element_blank())
 save_figure(plot = p_sex,
             filename = paste0(results_dir, "sex_bars.pdf"),
             height = 2, width = 2)
@@ -365,13 +368,14 @@ p_onset <- df2 %>%
                      breaks = seq(0, 11, by = 2)) +
   guides(fill = guide_legend(direction = "vertical",
                              override.aes = list(color = NA))) +
-  labs(y = "Count",
-       fill = "Site of\nonset") +
-  theme_linedraw(base_size = 10) +
-  theme_als_project() +
+  labs(y = "Count") +
+  ggtitle("Site of ALS onset") +
+  theme_linedraw() +
+  theme_als_project(title_size = 7) +
   rotate_x_text() +
   theme(axis.title.x = element_blank(),
-        legend.box.spacing = unit(0.1, "cm"))
+        legend.box.spacing = unit(0.1, "cm"),
+        legend.title = element_blank())
 save_figure(plot = p_onset,
             filename = paste0(results_dir, "onset_site_bars.pdf"),
             height = 2, width = 1.8)
