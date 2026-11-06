@@ -87,6 +87,10 @@ df <- df %>%
 df %>% 
   filter(total != 0) %>%
   mutate(celltype = str_replace_all(celltype, "_", " ")) %>%
+  mutate(celltype = case_when(celltype == "Endothelial cell" ~ "Endo. cell",
+                              celltype == "Proliferating myeloid cell" ~ "Prolif. myeloid cell",
+                              celltype == "Smooth muscle cell" ~ "SMC",
+                              .default = celltype)) %>%
   mutate(order = paste0(celltype, "_", tissue)) %>%
   arrange(desc(total)) %>% 
   mutate(order = fct_inorder(order)) %>% 
@@ -98,13 +102,13 @@ df %>%
                          labels = c("Motor cortex", "Cervical spinal cord", "Skeletal muscle")),
          type = factor(type, 
                        levels = c("sals_only", "c9_only", "shared"),
-                       labels = c("sALS only", "C9orf72-ALS only", "Shared"))) %>%
+                       labels = c("sALS only", "C9orf72-ALS only", "Both"))) %>%
   ggplot(aes(x = order,
              y = n)) + 
   geom_bar(aes(fill = type),
            stat = "identity",
            color = "black",
-           linewidth = 0.4) + 
+           linewidth = 0.25) + 
   facet_wrap(. ~ tissue, ncol = 3,
              scales = "free_x") +
   scale_fill_manual(values = c("#0CAA00", "#CC00FF", "darkslategrey")) +
@@ -112,15 +116,20 @@ df %>%
   scale_x_discrete(
     labels = function(x) str_split_i(x, "_", i = 1)    # remove everything through the last “_”
   ) +
+  guides(fill = guide_legend(direction = "vertical",
+                             override.aes = list(color = NA))) +
   ylab("# DEGs") + 
   labs(fill = "DEGs versus\ncontrol in:") +
   theme_linedraw() +
   theme_als_project() + 
-  rotate_x_text() + 
-  theme(axis.title.x = element_blank())
+  rotate_x_text(90) + 
+  theme(axis.title.x = element_blank(),
+        legend.box.spacing = unit(0.05, "cm"),
+        legend.title = element_text(margin = margin(b = 0.05, unit = "cm")),
+        strip.text = element_text(size = 7))
 save_figure(last_plot(),
             filename = paste0(plots_dir0, "figure1/deseq2_bars.pdf"),
-            height = 1.5, width = 6.5)
+            height = 2.2, width = 6.5)
 
 # 3-way dotplot of DEGs? --------------------------------------------------
 
