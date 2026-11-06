@@ -5,6 +5,7 @@ library(Seurat)
 library(scCustomize)
 library(BPCells)
 library(paletteer)
+library(ggrastr)
 
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
@@ -105,10 +106,12 @@ df %>%
                        labels = c("sALS only", "C9orf72-ALS only", "Both"))) %>%
   ggplot(aes(x = order,
              y = n)) + 
-  geom_bar(aes(fill = type),
+  ggrastr::rasterize(
+    geom_bar(aes(fill = type),
            stat = "identity",
            color = "black",
-           linewidth = 0.25) + 
+           linewidth = 0.25),
+    dpi = 600) + 
   facet_wrap(. ~ tissue, ncol = 3,
              scales = "free_x") +
   scale_fill_manual(values = c("#0CAA00", "#CC00FF", "darkslategrey")) +
