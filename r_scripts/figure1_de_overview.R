@@ -174,13 +174,14 @@ df %>%
                              override.aes = list(color = NA))) +
   xlab("# DEGs") + 
   labs(fill = "DEGs versus control in:") +
+  ggtitle("Differential expression in the ALS motor circuit") +
   theme_linedraw() +
   theme_als_project() + 
   # rotate_x_text(90) + 
   theme(axis.title.y = element_blank(),
         legend.box.spacing = unit(0.01, "cm"),
         # legend.title = element_text(margin = margin(b = 0.05, unit = "cm")),
-        strip.text = element_text(size = 7),
+        # strip.text = element_text(size = 7),
         legend.position = "bottom",
         panel.spacing = unit(0.05, "cm"))
 save_figure(last_plot(),
