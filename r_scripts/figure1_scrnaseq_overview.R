@@ -105,8 +105,6 @@ save_figure(umap_group,
 
 # Highlight neurons and MFs since I collapsed their labels ----------------
 
-# 11/4/26 need to remake these! 
-
 plots_dir <- paste0(plots_dir0, "supp2/")
 dir.create(plots_dir,
            recursive = T,
@@ -154,3 +152,29 @@ DimPlot_scCustom(obj,
 save_figure(last_plot(),
             filename = paste0(plots_dir, "mf_highlight_umap.pdf"),
             height =2, width = 2)
+
+# Highlight microglia for Fig 2 -------------------------------------------
+
+plots_dir <- paste0(plots_dir0, "figure2/")
+dir.create(plots_dir,
+           recursive = T,
+           showWarnings = F)
+
+obj@meta.data <- obj@meta.data %>% 
+  mutate(highlight = if_else(cell_type4 == "Microglia", "1", "2"))
+
+DimPlot_scCustom(obj,
+                 group.by = "highlight",
+                 pt.size = 2,
+                 raster.dpi = c(900, 900),
+                 colors_use = c("midnightblue", "#b8b0a8")) + 
+  guides(color = guide_legend(ncol = 1,
+                              override.aes = list(size = 4))) + 
+  umap_labs +
+  theme_als_project() +
+  umap_theme +
+  theme(plot.title = element_blank(),
+        legend.position = "none")
+save_figure(last_plot(),
+            filename = paste0(plots_dir, "microglia_highlight_umap.pdf"),
+            height = 2, width = 2)
