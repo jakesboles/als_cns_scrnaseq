@@ -103,20 +103,6 @@ save_figure(umap_group,
             filename = paste0(plots_dir, "umap_group.pdf"),
             height = 3, width = 3.5)
 
-# patchworked version to see if this is better for assembling in Illustrator
-design <- "
-AAAABB
-AAAABB
-AAAACC
-AAAACC
-"
-
-umap_celltype + umap_tissue + umap_group + 
-  plot_layout(design = design)
-save_figure(last_plot(),
-            filename = paste0(plots_dir, "umap_3way.pdf"),
-            height = 6, width = 13)
-
 # Highlight neurons and MFs since I collapsed their labels ----------------
 
 # 11/4/26 need to remake these! 
@@ -145,7 +131,7 @@ DimPlot_scCustom(obj,
         legend.position = "none")
 save_figure(last_plot(),
             filename = paste0(plots_dir, "neuron_highlight_umap.pdf"),
-            height = 4, width = 4)
+            height = 2, width = 2)
 # ggsave(filename = paste0(plots_dir, "neuron_highlight.png"),
 # units = "in", dpi = 600,
 # height = 4, width = 4.5)
@@ -167,4 +153,4 @@ DimPlot_scCustom(obj,
         legend.position = "none")
 save_figure(last_plot(),
             filename = paste0(plots_dir, "mf_highlight_umap.pdf"),
-            height = 4, width = 4)
+            height =2, width = 2)
