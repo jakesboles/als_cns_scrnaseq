@@ -273,7 +273,7 @@ p_age <- df %>%
                geom = "errorbar",
                linewidth = 1.2,
                width = 0.6) +
-  scale_fill_manual(values = c("#b8b0a8", "#CC00FF", "#0CAA00")) + 
+  scale_fill_manual(values = c("#b8b0a8", "#0CAA00", "#CC00FF")) + 
   labs(y = "Age (yr)") +
   ggtitle("Age at death") +
   theme_linedraw() +
@@ -306,7 +306,7 @@ p_duration <- df2 %>%
                geom = "errorbar",
                linewidth = 1.2,
                width = 0.6) +
-  scale_fill_manual(values = c("#CC00FF", "#0CAA00")) + 
+  scale_fill_manual(values = c("#0CAA00", "#CC00FF")) + 
   labs(y = "Disease duration (yr)") +
   ggtitle("ALS disease duration") +
   theme_linedraw() +
