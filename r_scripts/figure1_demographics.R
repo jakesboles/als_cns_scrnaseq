@@ -239,7 +239,7 @@ p <- p_group + p_c9 + p_age + p_sex + p_onset + p_duration + p_sc + p_ffpe +
         legend.title = element_text(margin = margin(b = 0.05, unit = "cm")),
         axis.title.x = element_blank(),
         strip.background = element_rect(fill = "white"),
-        strip.text = element_text(size = 7))
+        strip.text = element_text(size = 6))
 
 save_figure(p,
             filename = paste0(results_dir0, "figure1/demographics_heatmap.pdf"),
