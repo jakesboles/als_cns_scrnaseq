@@ -14,6 +14,7 @@ suppressMessages({
   library(scales)
   library(ComplexUpset)
   library(ggrastr)
+  library(patchwork)
 })
 
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
@@ -172,7 +173,7 @@ for (i in seq_along(plot_data)){
 }
 
 wrap_plots(p_list[[3]], p_list[[4]], p_list[[1]], p_list[[2]],
-           nrow = 1,
+           nrow = 2,
            guides = "collect") & 
   theme(legend.position = "bottom",
         legend.box = "horizontal",
@@ -183,8 +184,123 @@ wrap_plots(p_list[[3]], p_list[[4]], p_list[[1]], p_list[[2]],
         legend.text = element_text(margin = margin(t = 0.02, unit = "cm")))
 save_figure(last_plot(),
             filename = paste0(results_dir, "milo_umap.pdf"),
-            height = 1.5, width = 3.3)
+            height = 2.2, width = 2)
 
 for (i in seq_along(plot_data)){
   message(names(plot_data)[i])
 }
+
+# Upset plot of diff abundant Nhoods --------------------------------------
+
+expected_combos <- c("Motor_cortex_sALS_vs_Control", "Motor_cortex_C9orf72_vs_Control",
+                     "Cervical_spinal_cord_sALS_vs_Control", "Cervical_spinal_cord_C9orf72_vs_Control")
+
+if (!setequal(names(plot_data), expected_combos)){
+  stop("The DA neighborhood upset plot section assumes exactly the 4 ",
+       "combinations available for the microglia target (2 tissues x 2 ",
+       "contrasts), matching deseq_viz2.R's DEG upset plot -- got: ",
+       paste(names(plot_data), collapse = ", "),
+       ". Update the set names/labeller/highlight_group logic below if ",
+       "you're running a different target_name.")
+}
+
+nhood_lists <- list()
+for (combo_name in names(plot_data)){
+  nhood_lists[[combo_name]] <- plot_data[[combo_name]]$layout %>%
+    filter(logFC != 0) %>%
+    pull(cell)
+}
+
+nhoods <- unique(list_c(nhood_lists))
+
+intersect_df <- data.frame(nhood = nhoods)
+for (combo_name in names(nhood_lists)){
+  intersect_df <- intersect_df %>%
+    mutate(x = if_else(nhood %in% nhood_lists[[combo_name]], T, F)) %>%
+    dplyr::rename(!!sym(combo_name) := "x")
+}
+
+list_names <- names(plot_data)
+
+intersect_df <- intersect_df %>%
+  mutate(
+    highlight_group = case_when(
+      Motor_cortex_C9orf72_vs_Control & Cervical_spinal_cord_C9orf72_vs_Control &
+        !Motor_cortex_sALS_vs_Control & !Cervical_spinal_cord_sALS_vs_Control ~ "C9orf72-ALS shared",
+      Motor_cortex_C9orf72_vs_Control & Motor_cortex_sALS_vs_Control &
+        !Cervical_spinal_cord_C9orf72_vs_Control & !Cervical_spinal_cord_sALS_vs_Control ~ "Motor cortex shared",
+      Cervical_spinal_cord_C9orf72_vs_Control & Cervical_spinal_cord_sALS_vs_Control &
+        !Motor_cortex_C9orf72_vs_Control & !Motor_cortex_sALS_vs_Control ~ "Cervical spinal cord shared",
+      TRUE ~ "Other"
+    )
+  )
+
+pdf(file = paste0(results_dir, "microglia_nhood_upset.pdf"),
+    height = 2, width = 2.25)
+
+upset(intersect_df, list_names,
+      set_sizes = F,
+      stripes = "white",
+      wrap = T,
+      encode_sets = F,
+      height_ratio = 0.9,
+      labeller = ggplot2::as_labeller(c(
+        "Motor_cortex_C9orf72_vs_Control" = "C9orf72-ALS MCX",
+        "Motor_cortex_sALS_vs_Control" = "sALS MCX",
+        "Cervical_spinal_cord_C9orf72_vs_Control" = "C9orf72-ALS SC",
+        "Cervical_spinal_cord_sALS_vs_Control" = "sALS SC"
+      )),
+      matrix = (intersection_matrix(
+        geom = geom_point(shape = 19, size = 2),
+        segment = geom_segment(linewidth = 1),
+        outline_color = list(active = "white", inactive = "white")
+      )),
+      base_annotations = list(
+        'Intersection size' = intersection_size(
+          text = list(size = 0),
+          mapping = aes(fill = highlight_group)
+        ) +
+          scale_fill_manual(
+            values = c(
+              "C9orf72-ALS shared" = "#CC00FF",
+              "Motor cortex shared" = "#0073C2",
+              "Cervical spinal cord shared" = "#EFC000",
+              "Other" = "grey35"
+            ),
+            guide = "none"
+          ) +
+          scale_y_continuous(expand = c(0, 0)) +
+          ylab("# DA neighborhoods")
+      ),
+      queries = list(
+        upset_query(intersect = c("Motor_cortex_C9orf72_vs_Control", "Cervical_spinal_cord_C9orf72_vs_Control"),
+                    color = "#CC00FF", fill = "#CC00FF",
+                    only_components = "intersections_matrix"),
+        upset_query(intersect = c("Motor_cortex_C9orf72_vs_Control", "Motor_cortex_sALS_vs_Control"),
+                    color = "#0073C2", fill = "#0073C2",
+                    only_components = "intersections_matrix"),
+        upset_query(intersect = c("Cervical_spinal_cord_C9orf72_vs_Control", "Cervical_spinal_cord_sALS_vs_Control"),
+                    color = "#EFC000", fill = "#EFC000",
+                    only_components = "intersections_matrix")
+      ),
+      theme = upset_modify_themes(
+        list(
+          'Intersection size' = theme_linedraw() + theme_als_project() +
+            theme(panel.border = element_rect(color = "black", fill = "transparent"),
+                  axis.title.x = element_blank(),
+                  axis.text.x = element_blank(),
+                  axis.ticks.x = element_blank(),
+                  plot.margin = margin(t = 0, r = 0, b = 1, l = 0, unit = "pt")),
+          'intersections_matrix' = theme_als_project() +
+            theme(axis.text = element_text(color = "black"),
+                  axis.title.x = element_blank(),
+                  axis.title.y = element_blank(),
+                  panel.border = element_rect(color = "black", fill = "transparent"),
+                  plot.margin = margin(t = 1, r = 0, b = 0, l = 0, unit = "pt"))
+        )
+      )
+) +
+  ggtitle("Microglia DA neighborhoods") +
+  theme_als_project(title_size = 7)
+
+dev.off()
