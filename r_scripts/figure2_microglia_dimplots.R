@@ -79,18 +79,3 @@ microglia_umap("group", "ALS group",
 save_figure(last_plot(),
             filename = paste0(plots_dir, "umap_group.pdf"),
             height = 1.5, width = 2)
-
-DimPlot_scCustom(obj,
-                 group.by = "tissue",
-                 raster = T,
-                 raster.dpi = c(1200, 1200), 
-                 colors_use = JCO_Four(),
-                 pt.size = 4) + 
-  ggtitle("Neuron subtype") +
-  guides(color = guide_legend(ncol = 1, # ncol = 1 for MFs
-                              override.aes = list(size = 2))) + 
-  umap_labs + 
-  theme_als_project(title_size = 7) + 
-  umap_theme + 
-  theme(legend.text = element_text(margin = margin(r = 0.01, unit = "cm")),
-        legend.box.spacing = unit(0.1, "cm"))
