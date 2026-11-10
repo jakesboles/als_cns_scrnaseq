@@ -7,6 +7,7 @@ library(BPCells)
 library(ggbeeswarm)
 library(scCustomize)
 library(ggpubr)
+library(scales)
 
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
@@ -246,3 +247,45 @@ for (i in seq_along(mois)){
               filename = paste0(plots_dir, "wgcna_module", i, "_expression.pdf"),
               height = 2, width = 1.5)
 }
+
+# ORA result plots --------------------------------------------------------
+
+ora <- read.csv(paste0(in_dir, mois[i], "_gsea.csv"))
+
+wrap_n <- c(17, 26)
+
+ora %>%
+  filter(Count > 10 & p.adjust < 0.05 &
+           str_detect(X, "GOBP|GOMF|GOCC")) %>%
+  mutate(db = str_split_i(X, "_", i = 1) %>% 
+           str_remove_all("GO"),
+         path = str_remove_all(X, "GOBP_|GOMF_|GOCC_")) %>%
+  mutate(path = paste0(str_replace_all(path, "_", " "), " (", db, ")")) %>%
+  arrange(desc(FoldEnrichment)) %>%
+  mutate(path = fct_inorder(path)) %>%
+  slice_head(n = 6) %>% 
+  ggplot(aes(y = path,
+             x = FoldEnrichment)) +
+  geom_col(aes(fill = Count),
+           linewidth = 0.25,
+           color = "black") + 
+  scale_fill_gradientn(
+    colours = module_grads[[i]][-1]) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_discrete(labels = label_wrap(width = wrap_n[i]),
+                   limits = rev)  +
+  labs(x = "Fold enrichment",
+       fill = "# genes\nshared") +
+  ggtitle(paste0("Module ", i, " pathway enrichment")) +
+  theme_linedraw() + 
+  theme_als_project(title_size = 7) +
+  theme(plot.margin = margin(0, 0, 0, 0),
+        plot.title = element_text(margin = margin(b = 1, "cm")),
+        legend.box.spacing = unit(0.05, "cm"),
+        axis.title.y = element_blank(),
+        axis.title.x = element_text(margin = margin(t = 0.025, unit = "cm")),
+        axis.text.y = element_text(size = 5),
+        axis.ticks.y = element_blank())
+save_figure(last_plot(),
+            filename = paste0(plots_dir, "wgcna_module", i, "_ora.pdf"),
+            height = 2, width = 2.5)
