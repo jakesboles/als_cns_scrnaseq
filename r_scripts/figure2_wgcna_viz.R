@@ -6,6 +6,7 @@ library(paletteer)
 library(BPCells)
 library(ggbeeswarm)
 library(scCustomize)
+library(ggpubr)
 
 setwd("/projects/b1169/boles/als_cns_scrnaseq")
 
@@ -125,38 +126,123 @@ for (i in seq_along(mois)){
 
 # Expression plots ---------------------------------------------------
 
+scores <- scores %>% 
+  mutate(group = factor(group, 
+                        levels = c("Control", "sALS", "C9orf72"),
+                        labels = c("Control", "sALS", "C9orf72-ALS")),
+         tissue = factor(tissue,
+                         levels = c("Motor cortex", "Cervical spinal cord"),
+                         labels = c("MCX", "SC")))
+
+
+
 pb <- scores %>% 
   group_by(orig.ident, group, tissue) %>% 
   mutate(across(where(is.numeric), median)) %>% 
   distinct(orig.ident,
            .keep_all = T)
 
-pb %>%
+p1 <- pb %>%
   ggplot(aes(x = group,
              y = !!sym(paste0(mois[i], "_UCell_kNN")))) + 
-  geom_quasirandom(aes(fill = group),
-                   shape = 21,
-                   size = 4,
+  geom_quasirandom(aes(color = group),
+                   shape = 16,
+                   size = 1,
                    alpha = 0.7) + 
   stat_summary(fun = mean,
-               geom = "crossbar") +
+               geom = "crossbar",
+               linewidth = 0.1) +
   stat_summary(fun.data = mean_se,
                geom = "errorbar",
-               linewidth = 1.2,
+               linewidth = 0.12,
                width = 0.6) +
   facet_wrap(. ~ tissue,
              nrow = 1) + 
-  scale_fill_manual(values = c("#b8b0a8", "#0CAA00", "#CC00FF")) + 
-  labs(y = paste0(str_to_title(mois[i]), " module score")) +
-  theme_linedraw(base_size = 12) + 
+  scale_color_manual(values = c("#b8b0a8", "#0CAA00", "#CC00FF")) + 
+  # labs(y = paste0(str_to_title(mois[i]), " module score")) +
+  theme_linedraw() +
+  theme_als_project() +
   theme(axis.title.x = element_blank(),
         legend.title = element_blank(),
         legend.position = "none",
-        axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
-        strip.text = element_text(face = "bold", color = "black"),
-        strip.background = element_rect(fill = "gray", color = "black"))
-ggsave(filename = paste0(in_dir, mois[i], "_expression_pb.png"),
-       units = "in", dpi = 600,
-       height = 3, width = 4)
-}
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
 
+p2 <- scores %>% 
+  ggplot(aes(x = group,
+             y = !!sym(paste0(mois[i], "_UCell_kNN")))) + 
+  geom_violin(aes(fill = group),
+              linewidth = 0.25) + 
+  facet_wrap(. ~ tissue,
+             nrow = 1) + 
+  scale_fill_manual(values = c("#b8b0a8", "#0CAA00", "#CC00FF")) + 
+  # labs(y = paste0(str_to_title(mois[i]), " module score")) +
+  theme_linedraw() +
+  theme_als_project() +
+  rotate_x_text(45) +
+  theme(axis.title.x = element_blank(),
+        legend.title = element_blank(),
+        legend.position = "none",
+        axis.ticks.x = element_blank(),
+        strip.text = element_blank())
+
+p1 + p2 + 
+  plot_layout(ncol = 1) &
+  theme(panel.spacing = unit(0, "pt"),
+        plot.margin = margin(t = 0, b =))
+save_figure(last_plot(),
+            filename = paste0(plots_dir, "wgcna_module", i, "_expression_patch.pdf"),
+            height = 2, width = 1.5)
+
+for (i in seq_along(mois)){
+  p <- ggplot(data = scores,
+              aes(x = group,
+                  y = !!sym(paste0(mois[i], "_UCell_kNN")))) + 
+    geom_violin(aes(fill = group),
+                linewidth = 0.25,
+                show.legend = F) + 
+    stat_summary(data = pb,
+                 fun = mean,
+                 geom = "crossbar",
+                 linewidth = 0.1) +
+    # stat_summary(data = pb,
+    #              fun.data = mean_se,
+    #              geom = "errorbar",
+    #              linewidth = 0.2,
+    #              width = 0.6) +
+    geom_quasirandom(data = pb,
+                     aes(color = group),
+                     shape = 16,
+                     size = 1,
+                     alpha = 0.6,
+                     show.legend = F) + 
+    facet_wrap(. ~ tissue,
+               nrow = 1) +
+    geom_pwc(data = pb, 
+             method = "tukey_hsd",
+             hide.ns = T,
+             label = "p.signif",
+             label.size = 5 / .pt,
+             tip.length = 0,
+             vjust = 0.5,
+             step.increase = 0.05) +
+    scale_fill_manual(values = c("#D6D2CF", "#79D073", "#E373FF")) + 
+    scale_color_manual(values = c("#514E4C", "#065500", "#660080")) +
+    scale_y_log10() +
+    labs(y = "Module score") + 
+    ggtitle(paste0("Module ", i, " expression")) +
+    theme_linedraw() + 
+    theme_als_project(title_size = 7) +
+    rotate_x_text(45) +
+    theme(axis.title.x = element_blank(),
+          legend.title = element_blank(),
+          legend.position = "none",
+          axis.ticks.x = element_blank(),
+          panel.spacing = unit(0, "cm"),
+          strip.text = element_text(margin = margin(t = 1, b = 1, r = 2, l = 2)),
+          plot.margin = margin(0, 0, 0, 0),
+          plot.title = element_text(margin = margin(b = 1, "cm")))
+  save_figure(p,
+              filename = paste0(plots_dir, "wgcna_module", i, "_expression.pdf"),
+              height = 2, width = 1.5)
+}
