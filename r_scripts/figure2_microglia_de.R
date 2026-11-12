@@ -281,17 +281,32 @@ plot_fc_scatter_labeled <- function(tissue_1, contrast_1, tissue_2, contrast_2,
     geom_point(size = 1) +
     geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
     geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
-    geom_text_repel(data = label_genes,
-                    aes(label = X),
-                    size = 2.8,
-                    color = "black",
-                    max.overlaps = Inf,
-                    min.segment.length = 0,
-                    segment.color = "grey40",
-                    force = 2,
-                    max.time = 2,
-                    max.iter = 50000,
-                    show.legend = F) +
+    # geom_label_repel(data = label_genes,
+    #                 aes(label = X),
+    #                 size = 2.8,
+    #                 color = "black",
+    #                 max.overlaps = Inf,
+    #                 min.segment.length = 0,
+    #                 segment.color = "grey40",
+    #                 force = 2,
+    #                 max.time = 2,
+    #                 max.iter = 50000,
+    #                 show.legend = F) +
+    geom_label_repel(data = label_genes,
+                     aes(label = X),
+                     show.legend = FALSE,
+                     seed = 42,                    # reproducible layout
+                     force = 5,
+                     force_pull = 0.5,
+                     max.overlaps = Inf,            # never drop a label
+                     box.padding = 0.6,             # space around label
+                     point.padding = 0,           # space around the point it's labeling
+                     min.segment.length = 0,        # always draw the leader line
+                     segment.color = "grey40",
+                     # THIS is the part that avoids all points, not just labeled ones:
+                     max.time = 5,
+                     max.iter = 100000,
+                     size = 2.8) +
     labs(x = paste0("log2(fold change) in ", label_1),
          y = paste0("log2(fold change) in ", label_2),
          color = "DEGs versus\ncontrol in:") +
@@ -303,7 +318,8 @@ plot_fc_scatter_labeled <- function(tissue_1, contrast_1, tissue_2, contrast_2,
 plot_fc_scatter_labeled("sc", "sALS_vs_Control",
                         "sc", "C9orf72_vs_Control",
                         label_1 = "sALS",
-                        label_2 = "C9orf72-ALS") +
+                        label_2 = "C9orf72-ALS",
+                        n_labels = 10) +
   scale_color_manual(values = c("darkslategrey", "#0CAA00", "#CC00FF"),
                      breaks = c("Both", "sALS", "C9orf72-ALS")) +
   ggtitle("sALS vs C9orf72-ALS DEGs\nin cervical spinal cord")
@@ -314,7 +330,8 @@ ggsave(filename = paste0(slides_dir, "multivolcano_sc.png"),
 plot_fc_scatter_labeled("brain", "C9orf72_vs_Control",
                         "sc", "C9orf72_vs_Control",
                         label_2 = "SC",
-                        label_1 = "MCX") +
+                        label_1 = "MCX",
+                        n_labels = 10) +
   scale_color_manual(values = c("darkslategrey", "#0073C2", "#EFC000")) +
   ggtitle("Motor cortex vs cervical spinal\ncord DEGs in C9orf72-ALS")
 ggsave(filename = paste0(slides_dir, "multivolcano_c9.png"),
