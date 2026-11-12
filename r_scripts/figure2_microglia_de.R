@@ -213,9 +213,110 @@ save_figure(plot = last_plot(),
 plot_fc_scatter("brain", "C9orf72_vs_Control",
                 "sc", "C9orf72_vs_Control",
                 label_2 = "SC",
-                label_1 = "MCX") + 
-  scale_color_manual(values = c("darkslategrey", "#0073C2", "#EFC000")) + 
+                label_1 = "MCX") +
+  scale_color_manual(values = c("darkslategrey", "#0073C2", "#EFC000")) +
   ggtitle("Motor cortex vs cervical spinal\ncord DEGs in C9orf72-ALS")
 save_figure(plot = last_plot(),
             filename = paste0(plots_dir, "multivolcano_c9.pdf"),
             height = 2, width = 2.25)
+
+# Slide versions of the two multivolcano plots, with gene labels ------------
+# Presentation deliverable, not a manuscript figure -- kept in its own
+# section/output folder rather than mixed into the PDFs above. Reproduces
+# the same two comparisons via a separate function (plot_fc_scatter_labeled(),
+# not a modification of plot_fc_scatter() above) so this stays independent
+# of the manuscript figure code. Adds the top n_labels genes per
+# significance category (Both/label_1-only/label_2-only), ranked by
+# Euclidean fold-change magnitude (sqrt(log2FoldChange_1^2 +
+# log2FoldChange_2^2) -- distance from the origin, combining both axes into
+# one "how dramatically changed" ranking) rather than significance, since
+# the most visually striking points on a fold-change scatter are the ones
+# worth labeling here. Saved as ~6in x 6in PNGs (not PDFs) so two fit side
+# by side on a 16:9 slide.
+
+library(ggrepel)
+
+slides_dir <- paste0(plots_dir, "slides/")
+dir.create(slides_dir, showWarnings = F, recursive = T)
+
+plot_fc_scatter_labeled <- function(tissue_1, contrast_1, tissue_2, contrast_2,
+                                    label_1 = paste(tissue_1, contrast_1),
+                                    label_2 = paste(tissue_2, contrast_2),
+                                    n_labels = 5){
+
+  path_1 <- paste0(results_dir, tissue_1, "/", celltype, "/", contrast_1, ".csv")
+  path_2 <- paste0(results_dir, tissue_2, "/", celltype, "/", contrast_2, ".csv")
+
+  missing <- c(path_1, path_2)[!file.exists(c(path_1, path_2))]
+  if (length(missing) > 0){
+    stop(paste0("Missing DESeq2 results file(s): ",
+                paste(missing, collapse = ", ")))
+  }
+
+  res_1 <- read.csv(path_1) %>%
+    dplyr::select(X, log2FoldChange, padj)
+  res_2 <- read.csv(path_2) %>%
+    dplyr::select(X, log2FoldChange, padj)
+
+  df <- inner_join(res_1, res_2, by = "X", suffix = c("_1", "_2"))
+
+  df <- df %>%
+    mutate(sig_1 = !is.na(padj_1) & padj_1 < 0.05 & abs(log2FoldChange_1) > log2(1.5),
+           sig_2 = !is.na(padj_2) & padj_2 < 0.05 & abs(log2FoldChange_2) > log2(1.5),
+           sig_group = case_when(
+             sig_1 & sig_2 ~ "Both",
+             sig_1 & !sig_2 ~ label_1,
+             !sig_1 & sig_2 ~ label_2,
+             TRUE ~ "Neither"
+           )) %>%
+    filter(sig_group != "Neither")
+
+  label_genes <- df %>%
+    mutate(magnitude = sqrt(log2FoldChange_1^2 + log2FoldChange_2^2)) %>%
+    group_by(sig_group) %>%
+    slice_max(magnitude, n = n_labels) %>%
+    ungroup()
+
+  ggplot(df, aes(x = log2FoldChange_1, y = log2FoldChange_2, color = sig_group)) +
+    geom_point(size = 1) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+    geom_text_repel(data = label_genes,
+                    aes(label = X),
+                    size = 2.8,
+                    color = "black",
+                    max.overlaps = Inf,
+                    min.segment.length = 0,
+                    segment.color = "grey40",
+                    force = 2,
+                    max.time = 2,
+                    max.iter = 50000,
+                    show.legend = F) +
+    labs(x = paste0("log2(fold change) in ", label_1),
+         y = paste0("log2(fold change) in ", label_2),
+         color = "DEGs versus\ncontrol in:") +
+    theme_linedraw() +
+    theme_als_project(base_size = 10, title_size = 15) +
+    theme(axis.text = element_text(color = "black"))
+}
+
+plot_fc_scatter_labeled("sc", "sALS_vs_Control",
+                        "sc", "C9orf72_vs_Control",
+                        label_1 = "sALS",
+                        label_2 = "C9orf72-ALS") +
+  scale_color_manual(values = c("darkslategrey", "#0CAA00", "#CC00FF"),
+                     breaks = c("Both", "sALS", "C9orf72-ALS")) +
+  ggtitle("sALS vs C9orf72-ALS DEGs\nin cervical spinal cord")
+ggsave(filename = paste0(slides_dir, "multivolcano_sc.png"),
+       units = "in", dpi = 300,
+       height = 6, width = 6)
+
+plot_fc_scatter_labeled("brain", "C9orf72_vs_Control",
+                        "sc", "C9orf72_vs_Control",
+                        label_2 = "SC",
+                        label_1 = "MCX") +
+  scale_color_manual(values = c("darkslategrey", "#0073C2", "#EFC000")) +
+  ggtitle("Motor cortex vs cervical spinal\ncord DEGs in C9orf72-ALS")
+ggsave(filename = paste0(slides_dir, "multivolcano_c9.png"),
+       units = "in", dpi = 300,
+       height = 6, width = 6)
